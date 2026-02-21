@@ -68,15 +68,15 @@ Der Prompt ist optimiert für einen 75-jährigen Nutzer mit wenig Geduld:
 - Schritt-für-Schritt Anleitungen
 - Einfache Sprache ohne Fachbegriffe
 
-Anpassen in `index.html`, Zeile ~280.
+Anpassen in `index.html` in der Funktion `getSystemPrompt()`.
 
 ### Design anpassen
 
 Farben ändern:
 ```css
---primary-color: #e94560;     /* Hauptfarbe */
---background: #1a1a2e;        /* Hintergrund */
---accent: #4ecca3;            /* Akzentfarbe */
+--bg-start: #1a1a2e;          /* Hintergrund oben */
+--bg-end:   #16213e;          /* Hintergrund unten */
+--text:     white;            /* Textfarbe (dark mode) */
 ```
 
 ### Icons ändern
@@ -100,7 +100,8 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 - Speech Recognition funktioniert nur über HTTPS
 - iOS erlaubt Speech Recognition nur in Safari
 - TTS auf iOS benötigt expliziten Button-Klick zum Entsperren (wird automatisch gehandhabt)
-- Service Worker Cache ist begrenzt (~50 MB)
+- Fotos werden vor dem Upload auf max. 1920 px / JPEG komprimiert (Claude-API-Limit: 5 MB)
+- Gesprächskontext: Die letzten 10 Fragen/Antworten werden mitgeschickt, ältere werden verworfen
 
 ## 🔒 Sicherheit
 

@@ -280,16 +280,6 @@
             font-size: 14px;
         }
 
-        .form-group input[type="file"] {
-            width: 100%;
-            padding: 12px;
-            background: var(--input-bg);
-            border: 1px solid var(--input-border);
-            border-radius: 8px;
-            color: var(--text);
-            font-size: 14px;
-        }
-
         .button-group {
             display: flex;
             gap: 10px;
@@ -330,23 +320,6 @@
         }
         .toggle-switch input:checked + .toggle-slider { background:#e94560; }
         .toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
-        
-        .loading {
-            text-align: center;
-            padding: 10px;
-            color: rgba(255,255,255,0.6);
-        }
-        
-        .loading::after {
-            content: '...';
-            animation: dots 1.5s infinite;
-        }
-        
-        @keyframes dots {
-            0%, 20% { content: '.'; }
-            40% { content: '..'; }
-            60%, 100% { content: '...'; }
-        }
         
         .error {
             background: rgba(233, 69, 96, 0.2);
@@ -705,6 +678,7 @@
         // Camera Button
         document.getElementById('cameraButton').addEventListener('click', () => {
             if (!config.apiKey) { openSettings(); return; }
+            unlockTTS(); // iOS Safari: TTS im User-Gesture-Kontext entsperren
             document.getElementById('imageInput').click();
         });
 
@@ -739,6 +713,7 @@
         function compressImage(dataUrl, maxPx = 1920, quality = 0.82) {
             return new Promise((resolve) => {
                 const img = new Image();
+                img.onerror = () => resolve(dataUrl); // Fallback: Original unverändert nutzen
                 img.onload = () => {
                     let { width, height } = img;
                     if (width > maxPx || height > maxPx) {
@@ -919,8 +894,10 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
 
             const userText = `${t('manualPrefix')}\n\n${manualSection}\n\n${t('questionLabel')}: ${question}`;
 
+            // Max. 20 Einträge (= 10 Gesprächswechsel) mitnehmen, Rest verwerfen
+            const recentHistory = conversationHistory.slice(-20);
             const messages = [
-                ...conversationHistory.map(msg => ({
+                ...recentHistory.map(msg => ({
                     role: msg.role === 'user' ? 'user' : 'assistant',
                     content: msg.content
                 })),
