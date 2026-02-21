@@ -1,60 +1,48 @@
-const CACHE_NAME = 'cupra-assistant-v1';
+const CACHE_NAME = 'cupra-assistant-v2';
 const urlsToCache = [
-  '/',
-  '/index.html',
-  '/manifest.json',
-  '/icon-192.png',
-  '/icon-512.png'
+  './index.html',
+  './manifest.json',
+  './icon-192.png',
+  './icon-512.png'
 ];
 
 // Installation - Cache erstellen
 self.addEventListener('install', event => {
+  self.skipWaiting();
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then(cache => {
-        console.log('Cache geöffnet');
-        return cache.addAll(urlsToCache);
-      })
+    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
   );
 });
 
-// Fetch - Cache-First-Strategie für statische Assets
-self.addEventListener('fetch', event => {
-  // Nur GET-Anfragen cachen
-  if (event.request.method !== 'GET') {
-    return;
-  }
-  
-  // API-Aufrufe nicht cachen
-  if (event.request.url.includes('api.anthropic.com')) {
-    return;
-  }
-  
-  event.respondWith(
-    caches.match(event.request)
-      .then(response => {
-        // Cache hit - return response
-        if (response) {
-          return response;
-        }
-        return fetch(event.request);
-      }
-    )
-  );
-});
-
-// Activate - Alte Caches löschen
+// Activate - Alte Caches löschen und sofort übernehmen
 self.addEventListener('activate', event => {
   event.waitUntil(
-    caches.keys().then(cacheNames => {
-      return Promise.all(
-        cacheNames.map(cacheName => {
-          if (cacheName !== CACHE_NAME) {
-            console.log('Lösche alten Cache:', cacheName);
-            return caches.delete(cacheName);
-          }
-        })
-      );
-    })
+    caches.keys().then(cacheNames =>
+      Promise.all(
+        cacheNames
+          .filter(name => name !== CACHE_NAME)
+          .map(name => caches.delete(name))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+// Fetch - nur statische Assets cachen, alles andere direkt durchleiten
+self.addEventListener('fetch', event => {
+  // Alle Nicht-GET-Anfragen (z.B. API POST) direkt durchleiten
+  if (event.request.method !== 'GET') {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Externe API-Aufrufe direkt durchleiten
+  if (event.request.url.startsWith('https://api.anthropic.com')) {
+    event.respondWith(fetch(event.request));
+    return;
+  }
+
+  // Cache-First für statische Assets
+  event.respondWith(
+    caches.match(event.request).then(cached => cached || fetch(event.request))
   );
 });
