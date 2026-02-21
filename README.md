@@ -128,7 +128,6 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 - [ ] Favoriten/Schnellzugriff
 - [ ] Bilder hochladen (z.B. Fehlermeldungen)
 - [ ] Mehrsprachigkeit (EN/DE)
-- [ ] Dark/Light Mode Toggle
 - [ ] Offline-Antworten für häufige Fragen
 
 ## 🤝 Beitragen
