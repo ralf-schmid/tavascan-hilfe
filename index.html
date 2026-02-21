@@ -132,8 +132,42 @@
             padding: 20px;
             background: var(--controls-bg);
             border-top: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
         }
-        
+
+        .controls-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 24px;
+        }
+
+        .camera-button {
+            width: 58px;
+            height: 58px;
+            border-radius: 50%;
+            border: 2px solid var(--border);
+            background: var(--assistant-bg);
+            color: var(--text);
+            font-size: 26px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .camera-button:active { transform: scale(0.93); }
+
+        .camera-button:disabled {
+            opacity: 0.35;
+            cursor: not-allowed;
+        }
+
         .mic-button {
             width: 80px;
             height: 80px;
@@ -143,8 +177,6 @@
             color: white;
             font-size: 36px;
             cursor: pointer;
-            margin: 0 auto;
-            display: block;
             transition: all 0.3s;
             box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
             -webkit-tap-highlight-color: transparent;
@@ -175,7 +207,6 @@
         
         .status {
             text-align: center;
-            margin-top: 10px;
             font-size: 14px;
             color: var(--status-color);
         }
@@ -340,9 +371,13 @@
     </div>
     
     <div class="controls">
-        <button class="mic-button" id="micButton" disabled>🎤</button>
+        <div class="controls-buttons">
+            <button class="camera-button" id="cameraButton" disabled title="Foto aufnehmen / hochladen">📷</button>
+            <button class="mic-button" id="micButton" disabled>🎤</button>
+        </div>
         <div class="status" id="status">Bitte erst Setup durchführen</div>
     </div>
+    <input type="file" id="imageInput" accept="image/*" style="display:none;">
 
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
@@ -524,6 +559,7 @@
         function loadConfig() {
             if (config.apiKey) {
                 document.getElementById('micButton').disabled = false;
+                document.getElementById('cameraButton').disabled = false;
                 document.getElementById('status').textContent = t('ready');
                 addMessage('assistant', t('welcome'));
             } else {
@@ -584,6 +620,7 @@
 
             updateSetupIndicator();
             document.getElementById('micButton').disabled = false;
+            document.getElementById('cameraButton').disabled = false;
             document.getElementById('status').textContent = t('ready');
 
             setTimeout(() => {
@@ -664,7 +701,53 @@
                 stopListening();
             }
         });
-        
+
+        // Camera Button
+        document.getElementById('cameraButton').addEventListener('click', () => {
+            if (!config.apiKey) { openSettings(); return; }
+            document.getElementById('imageInput').click();
+        });
+
+        document.getElementById('imageInput').addEventListener('change', async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+            event.target.value = ''; // Reset für erneute Auswahl derselben Datei
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                const dataUrl = e.target.result;
+                const base64 = dataUrl.split(',')[1];
+                const mediaType = file.type || 'image/jpeg';
+
+                addImageMessage(dataUrl);
+                document.getElementById('status').textContent = t('thinking');
+
+                try {
+                    const response = await askClaudeWithImage(base64, mediaType);
+                    addMessage('assistant', response);
+                    if (config.tts) speakText(response);
+                    document.getElementById('status').textContent = t('ready');
+                } catch (error) {
+                    addMessage('assistant', `Fehler: ${error.message}`);
+                    document.getElementById('status').textContent = t('errorRetry');
+                }
+            };
+            reader.readAsDataURL(file);
+        });
+
+        function addImageMessage(dataUrl) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = 'message user-message';
+            const img = document.createElement('img');
+            img.src = dataUrl;
+            img.style.cssText = 'max-width:100%;max-height:220px;border-radius:8px;display:block;';
+            messageDiv.appendChild(img);
+            const conversation = document.getElementById('conversation');
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+            conversationHistory.push({ role: 'user', content: config.lang === 'en' ? '[Photo uploaded]' : '[Foto hochgeladen]' });
+        }
+
         function startListening() {
             if (!recognition) {
                 alert(t('noSpeechAlert'));
@@ -770,18 +853,9 @@
             return result.length > 120000 ? result.slice(0, 120000) : result;
         }
 
-        // Ask Claude via API
-        async function askClaude(question) {
-            // Anleitung laden (gecacht)
-            let manualSection;
-            try {
-                const manual = await fetchManual();
-                manualSection = extractRelevantSections(manual, question);
-            } catch (e) {
-                throw new Error(`Anleitung laden fehlgeschlagen: ${e.message}`);
-            }
-
-            const systemPrompt = config.lang === 'en'
+        // System-Prompt (sprachabhängig)
+        function getSystemPrompt() {
+            return config.lang === 'en'
                 ? `You are Horst's personal Cupra Tavascan expert. Horst is 75 years old, has little patience and needs short, clear answers without detours.
 
 HOW TO RESPOND:
@@ -812,6 +886,17 @@ WICHTIG FÜR SPRACHAUSGABE:
 - Keine langen Einleitungen wie "Gerne helfe ich dir dabei..."
 
 Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
+        }
+
+        // Ask Claude via API (Texteingabe)
+        async function askClaude(question) {
+            let manualSection;
+            try {
+                const manual = await fetchManual();
+                manualSection = extractRelevantSections(manual, question);
+            } catch (e) {
+                throw new Error(`Anleitung laden fehlgeschlagen: ${e.message}`);
+            }
 
             const userText = `${t('manualPrefix')}\n\n${manualSection}\n\n${t('questionLabel')}: ${question}`;
 
@@ -838,8 +923,63 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
                     body: JSON.stringify({
                         model: 'claude-sonnet-4-20250514',
                         max_tokens: 800,
-                        system: systemPrompt,
+                        system: getSystemPrompt(),
                         messages: messages
+                    })
+                });
+            } catch (e) {
+                throw new Error(`API nicht erreichbar: ${e.message}`);
+            }
+
+            if (!response.ok) {
+                const errorData = await response.json().catch(() => ({}));
+                throw new Error(`API Fehler ${response.status}: ${errorData.error?.message || response.statusText}`);
+            }
+
+            const data = await response.json();
+            if (data.content && data.content[0] && data.content[0].text) {
+                return data.content[0].text;
+            }
+            throw new Error('Unerwartete API-Antwort');
+        }
+
+        // Ask Claude via API (Bildanalyse)
+        async function askClaudeWithImage(base64, mediaType) {
+            let manualSection = '';
+            try {
+                const manual = await fetchManual();
+                const searchTerm = config.lang === 'en'
+                    ? 'warning error display indicator light'
+                    : 'Warnung Fehlermeldung Anzeige Kontrollleuchte';
+                manualSection = extractRelevantSections(manual, searchTerm);
+            } catch (e) { /* Anleitung optional bei Bildanalyse */ }
+
+            const imagePrompt = config.lang === 'en'
+                ? `Horst has taken a photo of his Cupra Tavascan (probably the display or a warning light).\n\nPlease:\n1. Describe briefly what you see in the image\n2. Explain what it means\n3. Tell Horst exactly what to do\n\nRelevant manual sections for reference:\n\n${manualSection}`
+                : `Horst hat ein Foto von seinem Cupra Tavascan aufgenommen (wahrscheinlich vom Display oder einer Warnanzeige).\n\nBitte:\n1. Beschreibe kurz, was du auf dem Bild siehst\n2. Erkläre, was das bedeutet\n3. Sag Horst genau, was er tun soll\n\nRelevante Abschnitte aus der Bedienungsanleitung zur Orientierung:\n\n${manualSection}`;
+
+            const userContent = [
+                { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+                { type: 'text', text: imagePrompt }
+            ];
+
+            let response;
+            try {
+                response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': config.apiKey,
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-dangerous-direct-browser-access': 'true'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 800,
+                        system: getSystemPrompt(),
+                        messages: [{ role: 'user', content: userContent }]
                     })
                 });
             } catch (e) {

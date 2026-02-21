@@ -1,11 +1,13 @@
-# 🚗 Cupra Tavascan Sprachassistent
+# 🚗 Cupra Tavascan Assistent
 
-Eine Progressive Web App (PWA) für den Cupra Tavascan, die per Sprachsteuerung Fragen zur Bedienung des Fahrzeugs beantwortet.
+Eine Progressive Web App (PWA) für den Cupra Tavascan — per Sprache oder Foto Fragen zur Bedienung stellen, Claude antwortet aus der Original-Bedienungsanleitung.
 
 ## 🎯 Features
 
 - 🎤 **Sprachsteuerung:** Fragen per Mikrofon stellen, Antworten per Text-to-Speech (iOS-optimiert)
+- 📷 **Foto-Analyse:** Fehlermeldungen oder Displayanzeigen fotografieren → Claude erklärt und sagt, was zu tun ist
 - 🌍 **Zweisprachig:** Deutsch und Englisch – Sprache im Setup wählbar (Spracherkennung, TTS und Antworten)
+- 🔊 **Sprachausgabe optional:** TTS per Toggle im Setup ein-/ausschalten
 - 📱 **PWA:** Installierbar wie eine native App auf dem iPhone
 - 📄 **Anleitung als Wissensbasis:** Markdown-Bedienungsanleitung direkt aus dem Repo
 - 💾 **Offline Q&A Cache:** Häufige Fragen werden lokal gespeichert und sofort beantwortet
@@ -29,9 +31,10 @@ Die App ist live unter: **[DEINE-URL-HIER]**
 ### Für Endnutzer
 
 1. **Öffne die App-URL** in Safari auf dem iPhone
-2. **Setup durchführen:** ⚙️ tippen → API Key eintragen → Sprache wählen → Speichern
+2. **Setup durchführen:** ⚙️ tippen → API Key eintragen → Sprache & TTS wählen → Speichern
 3. **Zum Home-Bildschirm hinzufügen:** Teilen-Symbol → „Zum Home-Bildschirm"
-4. **Fertig!** Mikrofon-Button drücken und Frage stellen
+4. **Fragen per Sprache:** Mikrofon-Button 🎤 drücken und Frage stellen
+5. **Fragen per Foto:** Kamera-Button 📷 drücken → Foto machen oder aus Galerie wählen
 
 ### Für Entwickler
 
@@ -41,9 +44,9 @@ Siehe [GITHUB_DEPLOYMENT.md](GITHUB_DEPLOYMENT.md) für detaillierte Anleitung.
 
 - **Hosting:** Kostenlos (GitHub Pages)
 - **Claude API:**
-  - Pro Anfrage: ~$0.02-0.10
-  - Mit Prompt Caching: 90% günstiger
-  - Erwartete Kosten: ~$2-10/Monat bei 100 Fragen
+  - Textfrage: ~$0.02–0.10
+  - Foto-Analyse (Vision): ~$0.05–0.20 je nach Bildgröße
+  - Erwartete Kosten: ~$2–15/Monat bei 100 Anfragen
 
 **Tipp:** Setze ein Budget-Limit in der Anthropic Console!
 
@@ -52,7 +55,8 @@ Siehe [GITHUB_DEPLOYMENT.md](GITHUB_DEPLOYMENT.md) für detaillierte Anleitung.
 - **Frontend:** Vanilla JavaScript, HTML5, CSS3
 - **PWA:** Service Worker, Web App Manifest
 - **Speech:** Web Speech API (Speech Recognition + Text-to-Speech)
-- **AI:** Anthropic Claude API (Sonnet 4)
+- **Vision:** Claude Vision API (Base64-Bildübertragung, kein eigener Server)
+- **AI:** Anthropic Claude API (claude-sonnet-4-20250514)
 - **Hosting:** GitHub Pages
 
 ## 🎨 Anpassungen
@@ -84,9 +88,10 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 | Feature | Safari iOS | Chrome Android | Firefox |
 |---------|-----------|----------------|---------|
 | PWA Installation | ✅ | ✅ | ⚠️ |
-| Speech Recognition | ✅ | ✅ | ❌ |
+| Spracherkennung | ✅ | ✅ | ❌ |
 | Text-to-Speech | ✅ | ✅ | ✅ |
-| PDF Upload | ✅ | ✅ | ✅ |
+| Foto hochladen | ✅ | ✅ | ✅ |
+| Kamera direkt | ✅ | ✅ | ✅ |
 
 **Empfohlen:** Safari auf iOS für beste Erfahrung
 
@@ -120,7 +125,8 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 ## 🚧 Roadmap
 
 - [ ] Favoriten/Schnellzugriff
-- [ ] Bilder hochladen (z.B. Fehlermeldungen fotografieren)
+- [x] Bilder hochladen – Fehlermeldungen fotografieren, Claude analysiert und erklärt
+- [x] Sprachausgabe per Toggle ein-/ausschaltbar
 - [x] Conversation History Export (TXT-Download im Setup)
 - [x] Mehrsprachigkeit DE/EN (Spracherkennung, TTS, Antworten)
 - [x] Dark/Light Mode Toggle
