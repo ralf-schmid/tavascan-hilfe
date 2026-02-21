@@ -13,7 +13,8 @@ Eine Progressive Web App (PWA) für den Cupra Tavascan — per Sprache oder Foto
 - 💾 **Offline Q&A Cache:** Häufige Fragen werden lokal gespeichert und sofort beantwortet
 - 📋 **Gesprächsexport:** Konversation als TXT-Datei herunterladen (im Setup)
 - 🌓 **Dark/Light Mode:** Umschaltbar per Knopfdruck, Einstellung wird gespeichert
-- 🔒 **Lokal gespeichert:** API Key, Spracheinstellung und Cache bleiben auf dem Gerät
+- ⭐ **Favoriten:** Antworten mit Stern markieren → als Schnellzugriff-Chips abrufbar
+- 🔒 **Lokal gespeichert:** API Key, Spracheinstellung, Cache und Favoriten bleiben auf dem Gerät
 
 ## 🚀 Live Demo
 
@@ -125,7 +126,7 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 
 ## 🚧 Roadmap
 
-- [ ] Favoriten/Schnellzugriff
+- [x] Favoriten/Schnellzugriff – Antworten per ⭐ merken, als Chip-Button abrufen
 - [x] Bilder hochladen – Fehlermeldungen fotografieren, Claude analysiert und erklärt
 - [x] Sprachausgabe per Toggle ein-/ausschaltbar
 - [x] Conversation History Export (TXT-Download im Setup)
