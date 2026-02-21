@@ -651,6 +651,12 @@
                 navigator.serviceWorker.register('sw.js').catch(err => {
                     console.log('Service Worker Registrierung fehlgeschlagen:', err);
                 });
+                // Wenn ein neuer SW die Kontrolle übernimmt (nach skipWaiting +
+                // clients.claim), Seite neu laden → Horst sieht sofort das Update.
+                // localStorage (API-Key, Cache, Favoriten) bleibt dabei erhalten.
+                navigator.serviceWorker.addEventListener('controllerchange', () => {
+                    window.location.reload();
+                });
             }
         });
         

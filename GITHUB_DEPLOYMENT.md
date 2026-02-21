@@ -66,16 +66,24 @@ git push
 
 2. **Linke Seitenleiste:** Scrolle zu **"Pages"**
 
-3. **Source-Einstellung:**
-   - **Branch:** `main` (oder `master`)
-   - **Folder:** `/ (root)`
+3. **Source-Einstellung:** ⚠️ **Wichtig – nicht "Branch", sondern "GitHub Actions" wählen!**
+   - Klicke auf das Dropdown unter „Build and deployment → Source"
+   - Wähle: **„GitHub Actions"** (nicht „Deploy from a branch")
    - Klicke: **"Save"**
 
-4. **Warte 1-2 Minuten**
-   - GitHub baut deine Seite
+   > **Warum?** Das Projekt deployt automatisch über den CI-Workflow (`.github/workflows/ci.yml`).
+   > Der Workflow führt erst Tests aus und erzeugt dann eine `version.json` mit dem aktuellen
+   > Build-Datum, die in der App unter ⚙️ Setup angezeigt wird.
+   > Mit „GitHub Actions" als Quelle laufen Tests und Deploy in einem Schritt.
+
+4. **Ersten Deploy auslösen:** Pushe einen Commit auf `main` (z. B. eine kleine Änderung in README.md)
+   - Im Reiter **„Actions"** siehst du den laufenden Workflow
+   - Grünes Häkchen → Seite ist live
+
+5. **Warte 1-2 Minuten**
    - Oben erscheint: "Your site is live at https://DEIN-USERNAME.github.io/cupra-assistent/"
 
-5. **Kopiere diese URL** - das ist deine App-Adresse!
+6. **Kopiere diese URL** – das ist deine App-Adresse!
 
 ---
 
@@ -208,9 +216,15 @@ Dein API Key wird **lokal im Browser** gespeichert (localStorage), NICHT auf Git
 
 ### Problem: "Seite lädt nicht / 404 Fehler"
 ✅ **Lösung:**
-- Warte 5 Minuten (GitHub Pages Build dauert)
-- Prüfe GitHub Actions Tab auf Fehler
-- Stelle sicher dass Branch auf `main` steht
+- Warte 5 Minuten (GitHub Actions Build dauert)
+- Prüfe im Reiter **„Actions"** ob der Workflow grün ist
+- Stelle sicher, dass Pages-Source auf **„GitHub Actions"** steht (nicht „Branch")
+
+### Problem: "Versionsanzeige zeigt 'Dev' statt Commit-Hash"
+✅ **Lösung:**
+- `version.json` wird vom CI-Workflow erzeugt und ist nicht im Repository
+- Prüfe ob der Deploy-Job im Actions-Workflow erfolgreich war (grünes Häkchen)
+- Lokal (ohne Deploy) ist „Dev · …" das erwartete Verhalten
 
 ### Problem: "App funktioniert offline nicht"
 ✅ **Lösung:**

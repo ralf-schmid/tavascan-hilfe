@@ -95,23 +95,48 @@ describe('QA-Cache', () => {
         assert.equal(result.answer, 'Antwort A');
     });
 
-    test('ähnliche Frage wird per Fuzzy-Match gefunden (≥ 70 %)', () => {
+    test('partieller Fuzzy-Match: 3 von 4 Keywords treffen (Score 0,75 ≥ 0,7)', () => {
         const store = new MockStorage();
-        saveToQACache('Wie funktioniert die Klimaanlage?', 'Antwort Klima', store);
-        // "wie" und "die" haben je 3 Zeichen → werden gefiltert (> 3 erforderlich)
-        // Keywords der Suchanfrage: "funktioniert", "klimaanlage" → beide matchen → Score 2/2 = 1,0
-        const result = findInQACache('Wie funktioniert die Klimaanlage?', store);
-        assert.ok(result, 'Ähnliche Frage soll gefunden werden');
-        assert.equal(result.answer, 'Antwort Klima');
+        // Gespeichert: Frage mit drei langen Keywords (> 3 Zeichen)
+        saveToQACache(
+            'Wie schalte ich Sitzheizung und Lenkradheizung ein?',
+            'Antwort Heizung',
+            store
+        );
+        // Suchanfrage: 4 Keywords → "winter" hat keinen Match → Score 3/4 = 0,75 ≥ 0,7 → gefunden
+        // Keywords:  "sitzheizung" ✓  "lenkradheizung" ✓  "schalte" ✓  "winter" ✗
+        const result = findInQACache(
+            'Sitzheizung Lenkradheizung schalte winter?',
+            store
+        );
+        assert.ok(result, 'Partieller Match (≥ 70 %) soll als Treffer gelten');
+        assert.equal(result.answer, 'Antwort Heizung');
     });
 
-    test('umgestellte Wortfolge wird per Fuzzy-Match gefunden', () => {
+    test('umgestellte Wortfolge: Score 1,0 trotz anderer Reihenfolge', () => {
         const store = new MockStorage();
         saveToQACache('Wie funktioniert die Klimaanlage?', 'Antwort Klima', store);
-        // Keywords: "klimaanlage", "funktioniert" → beide matchen → Score 2/2 = 1,0
+        // "wie" und "die" (je 3 Zeichen) werden herausgefiltert
+        // Verbleibende Keywords: "klimaanlage", "funktioniert" → beide in stored → Score 2/2 = 1,0
         const result = findInQACache('Klimaanlage – wie funktioniert die?', store);
         assert.ok(result, 'Umgestellte Wortfolge soll gefunden werden');
         assert.equal(result.answer, 'Antwort Klima');
+    });
+
+    test('knapper Nicht-Match: 2 von 4 Keywords treffen (Score 0,5 < 0,7)', () => {
+        const store = new MockStorage();
+        saveToQACache(
+            'Wie schalte ich Sitzheizung und Lenkradheizung ein?',
+            'Antwort Heizung',
+            store
+        );
+        // Keywords (5 Stück): "klimaanlage" ✗  "einschalten" ✗  "oder" ✗  "aktivieren" ✗  "sitzheizung" ✓
+        // Score = 1/5 = 0,20 < 0,7 → kein Treffer
+        const result = findInQACache(
+            'Klimaanlage einschalten oder aktivieren sitzheizung?',
+            store
+        );
+        assert.equal(result, null, 'Score 0,25 soll keinen Treffer liefern');
     });
 
     test('völlig andere Frage wird nicht gefunden (< 70 %)', () => {
