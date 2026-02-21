@@ -441,9 +441,14 @@
             if (manualContent) return manualContent;
             const response = await fetch(MANUAL_URL);
             if (!response.ok) {
-                throw new Error(`Anleitung konnte nicht von GitHub geladen werden (HTTP ${response.status})`);
+                throw new Error(`Anleitung konnte nicht geladen werden (HTTP ${response.status})`);
             }
-            manualContent = await response.text();
+            let text = await response.text();
+            // PDF-Konvertierungsartefakt: STX (0x02) wird von pdftotext mitten in
+            // deutsche Komposita eingefügt (z. B. "Lieblingsra\x02diosender").
+            // Entfernen stellt die ursprünglichen Wörter wieder her.
+            text = text.replace(/\x02/g, '');
+            manualContent = text;
             return manualContent;
         }
         
@@ -624,30 +629,45 @@
         
         // Relevante Abschnitte aus der Anleitung extrahieren (keyword-basiert)
         function extractRelevantSections(manual, question) {
-            const keywords = question.toLowerCase()
-                .split(/\s+/)
-                .map(w => w.replace(/[^a-zäöüß]/g, ''))
-                .filter(w => w.length > 3);
-
             const lines = manual.split('\n');
 
-            if (keywords.length === 0) {
-                return manual.slice(0, 40000);
+            // Schlüsselwörter: ≥3 Zeichen; zusätzlich rudimentäre Stammformen
+            const raw = question.toLowerCase()
+                .split(/\s+/)
+                .map(w => w.replace(/[^a-zäöüß]/g, ''))
+                .filter(w => w.length >= 3);
+
+            const keywords = new Set(raw);
+            for (const w of raw) {
+                // Häufige deutsche Flexionsendungen kürzen → Stammform
+                if (w.endsWith('ung')  && w.length > 5) keywords.add(w.slice(0, -3));
+                if (w.endsWith('ungen')&& w.length > 6) keywords.add(w.slice(0, -5));
+                if (w.endsWith('ieren')&& w.length > 6) keywords.add(w.slice(0, -5));
+                if (w.endsWith('ern')  && w.length > 5) keywords.add(w.slice(0, -3));
+                if (w.endsWith('ern')  && w.length > 5) keywords.add(w.slice(0, -2));
+                if (w.endsWith('en')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('er')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('es')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('em')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('e')    && w.length > 4) keywords.add(w.slice(0, -1));
             }
+            const kwList = [...keywords].filter(k => k.length >= 3);
+
+            if (kwList.length === 0) return manual.slice(0, 100000);
 
             const included = new Set();
+            // Erste 40 Zeilen (Inhaltsverzeichnis) immer einschließen
+            for (let j = 0; j < Math.min(40, lines.length); j++) included.add(j);
+
             lines.forEach((line, i) => {
                 const lower = line.toLowerCase();
-                if (keywords.some(kw => lower.includes(kw))) {
-                    for (let j = Math.max(0, i - 5); j <= Math.min(lines.length - 1, i + 40); j++) {
+                if (kwList.some(kw => lower.includes(kw))) {
+                    // Mehr Kontext: 10 Zeilen vor, 80 Zeilen nach dem Treffer
+                    for (let j = Math.max(0, i - 10); j <= Math.min(lines.length - 1, i + 80); j++) {
                         included.add(j);
                     }
                 }
             });
-
-            if (included.size === 0) {
-                return manual.slice(0, 40000);
-            }
 
             let result = '';
             let prev = -2;
@@ -657,7 +677,12 @@
                 prev = idx;
             });
 
-            return result.length > 60000 ? result.slice(0, 60000) : result;
+            // Falls Extraktion zu wenig ergab, sicherheitshalber mehr vom Anfang hinzunehmen
+            if (result.length < 8000) {
+                result = manual.slice(0, 100000);
+            }
+
+            return result.length > 120000 ? result.slice(0, 120000) : result;
         }
 
         // Ask Claude via API
