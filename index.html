@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Cupra Assistent">
+    <meta name="theme-color" content="#e94560">
+    <link rel="manifest" href="manifest.json">
+    <link rel="apple-touch-icon" href="icon-192.png">
+    <title>Cupra Tavascan Assistent</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            color: white;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        
+        .header {
+            padding: 15px 20px;
+            background: rgba(0,0,0,0.3);
+            text-align: center;
+            border-bottom: 2px solid #e94560;
+            position: relative;
+        }
+        
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+        }
+        
+        .setup-indicator {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: #ff6b6b;
+        }
+        
+        .setup-indicator.ready {
+            background: #4ecca3;
+        }
+        
+        .conversation {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        .message {
+            padding: 15px 20px;
+            border-radius: 18px;
+            max-width: 85%;
+            animation: slideIn 0.3s ease;
+            line-height: 1.5;
+            font-size: 16px;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .user-message {
+            background: #e94560;
+            margin-left: auto;
+            text-align: right;
+        }
+        
+        .assistant-message {
+            background: rgba(255,255,255,0.1);
+            margin-right: auto;
+        }
+        
+        .controls {
+            padding: 20px;
+            background: rgba(0,0,0,0.3);
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .mic-button {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            border: none;
+            background: #e94560;
+            color: white;
+            font-size: 36px;
+            cursor: pointer;
+            margin: 0 auto;
+            display: block;
+            transition: all 0.3s;
+            box-shadow: 0 4px 20px rgba(233, 69, 96, 0.4);
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        .mic-button:active {
+            transform: scale(0.95);
+        }
+        
+        .mic-button.listening {
+            background: #4ecca3;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .mic-button:disabled {
+            background: #666;
+            cursor: not-allowed;
+        }
+        
+        @keyframes pulse {
+            0%, 100% {
+                box-shadow: 0 4px 20px rgba(78, 204, 163, 0.4);
+            }
+            50% {
+                box-shadow: 0 4px 40px rgba(78, 204, 163, 0.8);
+            }
+        }
+        
+        .status {
+            text-align: center;
+            margin-top: 10px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.7);
+        }
+        
+        .settings-button {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: rgba(255,255,255,0.1);
+            border: none;
+            color: white;
+            padding: 8px 12px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            padding: 20px;
+            overflow-y: auto;
+        }
+        
+        .modal.active {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal-content {
+            background: #16213e;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        
+        .modal h2 {
+            margin-bottom: 20px;
+            font-size: 20px;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: rgba(255,255,255,0.8);
+        }
+        
+        .form-group input[type="text"],
+        .form-group input[type="password"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .form-group input[type="file"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            border-radius: 8px;
+            color: white;
+            font-size: 14px;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .btn-primary {
+            background: #e94560;
+            color: white;
+        }
+        
+        .btn-secondary {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 10px;
+            color: rgba(255,255,255,0.6);
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0%, 20% { content: '.'; }
+            40% { content: '..'; }
+            60%, 100% { content: '...'; }
+        }
+        
+        .file-status {
+            margin-top: 10px;
+            padding: 10px;
+            background: rgba(78, 204, 163, 0.2);
+            border-radius: 8px;
+            font-size: 13px;
+            color: #4ecca3;
+        }
+        
+        .error {
+            background: rgba(233, 69, 96, 0.2);
+            color: #e94560;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <button class="settings-button" onclick="openSettings()">⚙️ Setup</button>
+        <h1>🚗 Cupra Tavascan</h1>
+        <div class="setup-indicator" id="setupIndicator"></div>
+    </div>
+    
+    <div class="conversation" id="conversation">
+        <div class="message assistant-message">
+            Willkommen! Tippe oben auf "⚙️ Setup", um deinen API-Key und die Bedienungsanleitung hochzuladen.
+        </div>
+    </div>
+    
+    <div class="controls">
+        <button class="mic-button" id="micButton" disabled>🎤</button>
+        <div class="status" id="status">Bitte erst Setup durchführen</div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal" id="settingsModal">
+        <div class="modal-content">
+            <h2>⚙️ Einrichtung</h2>
+            
+            <div class="form-group">
+                <label>Claude API Key</label>
+                <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
+                <small style="color: rgba(255,255,255,0.6); font-size: 12px;">
+                    Erhältlich unter: <a href="https://console.anthropic.com/" target="_blank" style="color: #4ecca3;">console.anthropic.com</a>
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label>Bedienungsanleitung (PDF)</label>
+                <input type="file" id="pdfInput" accept=".pdf">
+                <div id="fileStatus"></div>
+            </div>
+            
+            <div class="button-group">
+                <button class="btn btn-secondary" onclick="closeSettings()">Abbrechen</button>
+                <button class="btn btn-primary" onclick="saveSettings()">Speichern</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State Management
+        let config = {
+            apiKey: localStorage.getItem('claude_api_key') || '',
+            pdfBase64: localStorage.getItem('pdf_base64') || '',
+            pdfName: localStorage.getItem('pdf_name') || ''
+        };
+        
+        let isListening = false;
+        let recognition;
+        let conversationHistory = [];
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadConfig();
+            initSpeechRecognition();
+            updateSetupIndicator();
+            
+            // Service Worker registrieren
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('sw.js').catch(err => {
+                    console.log('Service Worker Registrierung fehlgeschlagen:', err);
+                });
+            }
+        });
+        
+        // Load saved configuration
+        function loadConfig() {
+            if (config.apiKey && config.pdfBase64) {
+                document.getElementById('micButton').disabled = false;
+                document.getElementById('status').textContent = 'Bereit zum Zuhören';
+                addMessage('assistant', 'Hallo Horst! Drücke den Mikrofon-Button und stelle deine Frage zum Cupra Tavascan.');
+            }
+            
+            // Zeige Dateiname an, falls vorhanden
+            if (config.pdfName) {
+                document.getElementById('fileStatus').innerHTML = 
+                    `<div class="file-status">✓ ${config.pdfName} geladen</div>`;
+            }
+        }
+        
+        // Update setup indicator
+        function updateSetupIndicator() {
+            const indicator = document.getElementById('setupIndicator');
+            if (config.apiKey && config.pdfBase64) {
+                indicator.classList.add('ready');
+            } else {
+                indicator.classList.remove('ready');
+            }
+        }
+        
+        // Settings Modal
+        function openSettings() {
+            document.getElementById('settingsModal').classList.add('active');
+            document.getElementById('apiKeyInput').value = config.apiKey;
+        }
+        
+        function closeSettings() {
+            document.getElementById('settingsModal').classList.remove('active');
+        }
+        
+        async function saveSettings() {
+            const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const pdfFile = document.getElementById('pdfInput').files[0];
+            
+            if (!apiKey) {
+                alert('Bitte gib deinen Claude API Key ein.');
+                return;
+            }
+            
+            // API Key speichern
+            config.apiKey = apiKey;
+            localStorage.setItem('claude_api_key', apiKey);
+            
+            // PDF verarbeiten, falls hochgeladen
+            if (pdfFile) {
+                document.getElementById('fileStatus').innerHTML = 
+                    '<div class="loading">PDF wird verarbeitet</div>';
+                
+                try {
+                    const base64 = await fileToBase64(pdfFile);
+                    config.pdfBase64 = base64;
+                    config.pdfName = pdfFile.name;
+                    localStorage.setItem('pdf_base64', base64);
+                    localStorage.setItem('pdf_name', pdfFile.name);
+                    
+                    document.getElementById('fileStatus').innerHTML = 
+                        `<div class="file-status">✓ ${pdfFile.name} erfolgreich hochgeladen</div>`;
+                } catch (error) {
+                    document.getElementById('fileStatus').innerHTML = 
+                        `<div class="file-status error">❌ Fehler beim Hochladen: ${error.message}</div>`;
+                    return;
+                }
+            }
+            
+            updateSetupIndicator();
+            document.getElementById('micButton').disabled = false;
+            document.getElementById('status').textContent = 'Bereit zum Zuhören';
+            
+            setTimeout(() => {
+                closeSettings();
+                location.reload();
+            }, 1000);
+        }
+        
+        // Convert File to Base64
+        function fileToBase64(file) {
+            return new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => {
+                    const base64 = reader.result.split(',')[1];
+                    resolve(base64);
+                };
+                reader.onerror = reject;
+                reader.readAsDataURL(file);
+            });
+        }
+        
+        // Speech Recognition
+        function initSpeechRecognition() {
+            if ('webkitSpeechRecognition' in window) {
+                recognition = new webkitSpeechRecognition();
+                recognition.lang = 'de-DE';
+                recognition.continuous = false;
+                recognition.interimResults = false;
+                
+                recognition.onresult = async (event) => {
+                    const transcript = event.results[0][0].transcript;
+                    addMessage('user', transcript);
+                    stopListening();
+                    
+                    document.getElementById('status').textContent = 'Claude denkt nach...';
+                    
+                    try {
+                        const response = await askClaude(transcript);
+                        addMessage('assistant', response);
+                        speakText(response);
+                        document.getElementById('status').textContent = 'Bereit zum Zuhören';
+                    } catch (error) {
+                        addMessage('assistant', 'Entschuldigung, es gab einen Fehler. Bitte versuche es nochmal.');
+                        document.getElementById('status').textContent = 'Fehler - nochmal versuchen';
+                    }
+                };
+                
+                recognition.onerror = (event) => {
+                    console.error('Speech Recognition Error:', event.error);
+                    stopListening();
+                    
+                    let errorMessage = 'Fehler - bitte nochmal versuchen';
+                    if (event.error === 'no-speech') {
+                        errorMessage = 'Keine Sprache erkannt - nochmal versuchen';
+                    } else if (event.error === 'audio-capture') {
+                        errorMessage = 'Mikrofon-Zugriff verweigert';
+                    }
+                    
+                    document.getElementById('status').textContent = errorMessage;
+                };
+                
+                recognition.onend = () => {
+                    if (isListening) {
+                        stopListening();
+                    }
+                };
+            } else {
+                console.error('Speech Recognition nicht unterstützt');
+                addMessage('assistant', 'Spracherkennung wird von diesem Browser leider nicht unterstützt.');
+            }
+        }
+        
+        // Microphone Button
+        document.getElementById('micButton').addEventListener('click', () => {
+            if (!config.apiKey || !config.pdfBase64) {
+                openSettings();
+                return;
+            }
+            
+            if (!isListening) {
+                startListening();
+            } else {
+                stopListening();
+            }
+        });
+        
+        function startListening() {
+            if (!recognition) {
+                alert('Spracherkennung wird von diesem Browser nicht unterstützt.');
+                return;
+            }
+            
+            isListening = true;
+            document.getElementById('micButton').classList.add('listening');
+            document.getElementById('status').textContent = 'Ich höre zu...';
+            
+            try {
+                recognition.start();
+            } catch (error) {
+                console.error('Fehler beim Starten der Spracherkennung:', error);
+                stopListening();
+            }
+        }
+        
+        function stopListening() {
+            isListening = false;
+            document.getElementById('micButton').classList.remove('listening');
+            document.getElementById('status').textContent = 'Bereit zum Zuhören';
+            
+            if (recognition) {
+                try {
+                    recognition.stop();
+                } catch (error) {
+                    console.error('Fehler beim Stoppen:', error);
+                }
+            }
+        }
+        
+        // Add message to conversation
+        function addMessage(role, text) {
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
+            messageDiv.textContent = text;
+            
+            const conversation = document.getElementById('conversation');
+            conversation.appendChild(messageDiv);
+            conversation.scrollTop = conversation.scrollHeight;
+            
+            // Zur History hinzufügen (aber nicht die erste Willkommensnachricht)
+            if (conversationHistory.length > 0 || role === 'user') {
+                conversationHistory.push({ role, content: text });
+            }
+        }
+        
+        // Ask Claude via API
+        async function askClaude(question) {
+            try {
+                // System Prompt für Horst
+                const systemPrompt = `Du bist Horsts persönlicher Cupra Tavascan Experte. Horst ist 75 Jahre alt, hat wenig Geduld und braucht kurze, klare Antworten ohne Umschweife.
+
+SO ANTWORTEST DU:
+1. KURZ und DIREKT – Maximal 2-3 Sätze. Erst wenn Horst nachfragt, gibst du mehr Details.
+2. EINE Lösung – Nenne NICHT mehrere Optionen oder Alternativen. Sag ihm genau, was er tun soll.
+3. SCHRITT für SCHRITT – Nummeriere die Schritte (1., 2., 3.). Ein Schritt = eine Aktion.
+4. EINFACHE SPRACHE – Als würdest du es einem Freund erklären. Kein Fachchinesisch.
+5. GEDULDIG BLEIBEN – Auch bei wiederholten Fragen freundlich und hilfsbereit sein.
+
+WICHTIG FÜR SPRACHAUSGABE:
+- Halte Antworten so kurz wie möglich (Horst hört sie am Handy)
+- Bei langen Anleitungen: Erst die ersten 2 Schritte, dann auf Nachfrage weitermachen
+- Keine langen Einleitungen wie "Gerne helfe ich dir dabei..."
+
+BEISPIEL GUTE ANTWORT:
+"Die Sitzheizung schaltest du so ein: 1. Drück den Knopf mit dem Sitzsymbol links am Display. 2. Wähl deine Sitzseite. 3. Stell die Stufe 1-3 ein."
+
+BEISPIEL SCHLECHTE ANTWORT:
+"Für die Sitzheizung gibt es verschiedene Möglichkeiten. Du könntest entweder über das zentrale Display gehen oder alternativ..."
+
+Nutze die hochgeladene Bedienungsanleitung als deine Wissensquelle.`;
+
+                // Messages aufbauen
+                const messages = [
+                    ...conversationHistory.map(msg => ({
+                        role: msg.role === 'user' ? 'user' : 'assistant',
+                        content: msg.content
+                    })),
+                    {
+                        role: 'user',
+                        content: [
+                            {
+                                type: 'document',
+                                source: {
+                                    type: 'base64',
+                                    media_type: 'application/pdf',
+                                    data: config.pdfBase64
+                                },
+                                cache_control: { type: 'ephemeral' }
+                            },
+                            {
+                                type: 'text',
+                                text: question
+                            }
+                        ]
+                    }
+                ];
+                
+                const response = await fetch('https://api.anthropic.com/v1/messages', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'x-api-key': config.apiKey,
+                        'anthropic-version': '2023-06-01'
+                    },
+                    body: JSON.stringify({
+                        model: 'claude-sonnet-4-20250514',
+                        max_tokens: 800,
+                        system: systemPrompt,
+                        messages: messages
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(`API Fehler: ${errorData.error?.message || response.statusText}`);
+                }
+                
+                const data = await response.json();
+                
+                if (data.content && data.content[0] && data.content[0].text) {
+                    return data.content[0].text;
+                } else {
+                    throw new Error('Unerwartete API-Antwort');
+                }
+            } catch (error) {
+                console.error('Claude API Error:', error);
+                throw error;
+            }
+        }
+        
+        // Text-to-Speech
+        function speakText(text) {
+            // Vorherige Sprachausgabe stoppen
+            window.speechSynthesis.cancel();
+            
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'de-DE';
+            utterance.rate = 0.85; // Langsamer für Senioren
+            utterance.pitch = 1.0;
+            utterance.volume = 1.0;
+            
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+</html>
