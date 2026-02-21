@@ -15,7 +15,7 @@ Eine Progressive Web App (PWA) für den Cupra Tavascan, die per Sprachsteuerung 
 
 ## 🚀 Live Demo
 
-Die App ist live unter: **[DEINE-URL-HIER]**
+Die App ist live unter: **[https://ralf-schmid.github.io/tavascan-hilfe/](https://ralf-schmid.github.io/tavascan-hilfe/)**
 
 > ⚠️ Du benötigst einen Claude API Key von [Anthropic](https://console.anthropic.com/)
 
