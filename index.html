@@ -351,12 +351,12 @@
             }
         }
 
-        // Fetch manual from GitHub
+        // Fetch manual from GitHub (gecacht)
         async function fetchManual() {
             if (manualContent) return manualContent;
             const response = await fetch(MANUAL_URL);
             if (!response.ok) {
-                throw new Error(`Anleitung konnte nicht geladen werden (${response.status})`);
+                throw new Error(`Anleitung konnte nicht von GitHub geladen werden (HTTP ${response.status})`);
             }
             manualContent = await response.text();
             return manualContent;
@@ -415,16 +415,17 @@
                     const transcript = event.results[0][0].transcript;
                     addMessage('user', transcript);
                     stopListening();
-                    
+
                     document.getElementById('status').textContent = 'Claude denkt nach...';
-                    
+
                     try {
                         const response = await askClaude(transcript);
                         addMessage('assistant', response);
                         speakText(response);
                         document.getElementById('status').textContent = 'Bereit zum Zuhören';
                     } catch (error) {
-                        addMessage('assistant', 'Entschuldigung, es gab einen Fehler. Bitte versuche es nochmal.');
+                        const errorText = error.message || 'Unbekannter Fehler';
+                        addMessage('assistant', `Fehler: ${errorText}`);
                         document.getElementById('status').textContent = 'Fehler - nochmal versuchen';
                     }
                 };
@@ -542,8 +543,10 @@ BEISPIEL SCHLECHTE ANTWORT:
 
 Nutze die Bedienungsanleitung als deine Wissensquelle.`;
 
-                // Anleitung von GitHub laden (wird gecacht nach erstem Laden)
+                // Anleitung von GitHub laden (gecacht nach erstem Aufruf)
                 const manual = await fetchManual();
+                // Auf 500.000 Zeichen begrenzen (~125K Token) damit das Kontextfenster nicht überschritten wird
+                const manualTruncated = manual.length > 500000 ? manual.slice(0, 500000) + '\n[...Anleitung gekürzt...]' : manual;
 
                 // Messages aufbauen
                 const messages = [
@@ -558,7 +561,7 @@ Nutze die Bedienungsanleitung als deine Wissensquelle.`;
                                 type: 'document',
                                 source: {
                                     type: 'text',
-                                    data: manual
+                                    data: manualTruncated
                                 },
                                 cache_control: { type: 'ephemeral' }
                             },
@@ -569,13 +572,14 @@ Nutze die Bedienungsanleitung als deine Wissensquelle.`;
                         ]
                     }
                 ];
-                
+
                 const response = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
                         'x-api-key': config.apiKey,
-                        'anthropic-version': '2023-06-01'
+                        'anthropic-version': '2023-06-01',
+                        'anthropic-beta': 'pdfs-2024-09-25'
                     },
                     body: JSON.stringify({
                         model: 'claude-sonnet-4-20250514',
