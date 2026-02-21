@@ -4,13 +4,14 @@ Eine Progressive Web App (PWA) für den Cupra Tavascan, die per Sprachsteuerung 
 
 ## 🎯 Features
 
-- 🎤 **Sprachsteuerung:** Fragen per Mikrofon stellen
-- 🔊 **Automatische Antworten:** Claude antwortet per Text-to-Speech (iOS-optimiert)
+- 🎤 **Sprachsteuerung:** Fragen per Mikrofon stellen, Antworten per Text-to-Speech (iOS-optimiert)
+- 🌍 **Zweisprachig:** Deutsch und Englisch – Sprache im Setup wählbar (Spracherkennung, TTS und Antworten)
 - 📱 **PWA:** Installierbar wie eine native App auf dem iPhone
 - 📄 **Anleitung als Wissensbasis:** Markdown-Bedienungsanleitung direkt aus dem Repo
 - 💾 **Offline Q&A Cache:** Häufige Fragen werden lokal gespeichert und sofort beantwortet
+- 📋 **Gesprächsexport:** Konversation als TXT-Datei herunterladen (im Setup)
 - 🌓 **Dark/Light Mode:** Umschaltbar per Knopfdruck, Einstellung wird gespeichert
-- 🔒 **Lokal gespeichert:** API Key und Cache bleiben auf dem Gerät
+- 🔒 **Lokal gespeichert:** API Key, Spracheinstellung und Cache bleiben auf dem Gerät
 
 ## 🚀 Live Demo
 
@@ -20,24 +21,17 @@ Die App ist live unter: **[DEINE-URL-HIER]**
 
 ## 📋 Voraussetzungen
 
-- iPhone mit iOS 14.5 oder neuer
-- Safari Browser (für Spracherkennung)
-- Claude API Key (ab $5 Guthaben)
-- PDF der Cupra Tavascan Bedienungsanleitung
+- iPhone mit iOS 14.5 oder neuer (empfohlen: Safari)
+- Claude API Key (ab $5 Guthaben bei Anthropic)
 
 ## 🔧 Installation
 
-### Für Endnutzer (deinen Vater)
+### Für Endnutzer
 
 1. **Öffne die App-URL** in Safari auf dem iPhone
-2. **Setup durchführen:**
-   - ⚙️ Settings öffnen
-   - API Key eintragen
-   - PDF der Bedienungsanleitung hochladen
-   - Speichern
-3. **Zum Home-Bildschirm hinzufügen:**
-   - Teilen-Symbol → "Zum Home-Bildschirm"
-4. **Fertig!** App öffnen und loslegen
+2. **Setup durchführen:** ⚙️ tippen → API Key eintragen → Sprache wählen → Speichern
+3. **Zum Home-Bildschirm hinzufügen:** Teilen-Symbol → „Zum Home-Bildschirm"
+4. **Fertig!** Mikrofon-Button drücken und Frage stellen
 
 ### Für Entwickler
 
@@ -125,10 +119,10 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 
 ## 🚧 Roadmap
 
-- [ ] Conversation History Export
 - [ ] Favoriten/Schnellzugriff
-- [ ] Bilder hochladen (z.B. Fehlermeldungen)
-- [ ] Mehrsprachigkeit (EN/DE)
+- [ ] Bilder hochladen (z.B. Fehlermeldungen fotografieren)
+- [x] Conversation History Export (TXT-Download im Setup)
+- [x] Mehrsprachigkeit DE/EN (Spracherkennung, TTS, Antworten)
 - [x] Dark/Light Mode Toggle
 - [x] Offline-Antworten für häufige Fragen (Q&A Cache im localStorage)
 
