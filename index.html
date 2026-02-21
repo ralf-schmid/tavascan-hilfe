@@ -448,6 +448,10 @@
                     📋 Gespräch exportieren / Export History
                 </button>
             </div>
+
+            <div id="versionInfo" style="margin-top:14px;text-align:center;font-size:11px;opacity:0.4;letter-spacing:0.02em;">
+                –
+            </div>
         </div>
     </div>
 
@@ -619,12 +623,28 @@
         // Initialize
         let lastQuestion = '';
 
+        // Version aus version.json laden (wird vom CI-Build erzeugt)
+        function loadVersion() {
+            fetch('version.json')
+                .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+                .then(v => {
+                    document.getElementById('versionInfo').textContent =
+                        `v${v.version} · ${v.buildDate}`;
+                })
+                .catch(() => {
+                    // Fallback im lokalen Dev-Betrieb
+                    document.getElementById('versionInfo').textContent =
+                        `Dev · ${new Date().toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' })}`;
+                });
+        }
+
         document.addEventListener('DOMContentLoaded', () => {
             loadTheme();
             loadConfig();
             initSpeechRecognition();
             updateSetupIndicator();
             renderChips();
+            loadVersion();
             
             // Service Worker registrieren
             if ('serviceWorker' in navigator) {
