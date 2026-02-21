@@ -5,11 +5,12 @@ Eine Progressive Web App (PWA) für den Cupra Tavascan, die per Sprachsteuerung 
 ## 🎯 Features
 
 - 🎤 **Sprachsteuerung:** Fragen per Mikrofon stellen
-- 🔊 **Automatische Antworten:** Claude antwortet per Text-to-Speech
+- 🔊 **Automatische Antworten:** Claude antwortet per Text-to-Speech (iOS-optimiert)
 - 📱 **PWA:** Installierbar wie eine native App auf dem iPhone
-- 📄 **PDF-Integration:** Nutzt die komplette Bedienungsanleitung als Wissensbasis
-- 💾 **Offline-fähig:** Basis-Funktionalität auch ohne Internet
-- 🔒 **Lokal gespeichert:** API Key und PDF bleiben auf dem Gerät
+- 📄 **Anleitung als Wissensbasis:** Markdown-Bedienungsanleitung direkt aus dem Repo
+- 💾 **Offline Q&A Cache:** Häufige Fragen werden lokal gespeichert und sofort beantwortet
+- 🌓 **Dark/Light Mode:** Umschaltbar per Knopfdruck, Einstellung wird gespeichert
+- 🔒 **Lokal gespeichert:** API Key und Cache bleiben auf dem Gerät
 
 ## 🚀 Live Demo
 
@@ -98,14 +99,14 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 ## 🐛 Bekannte Probleme
 
 - Speech Recognition funktioniert nur über HTTPS
-- PDF sollte < 25 MB sein für beste Performance
 - iOS erlaubt Speech Recognition nur in Safari
+- TTS auf iOS benötigt expliziten Button-Klick zum Entsperren (wird automatisch gehandhabt)
 - Service Worker Cache ist begrenzt (~50 MB)
 
 ## 🔒 Sicherheit
 
 - API Key wird lokal im Browser gespeichert (localStorage)
-- PDF wird base64-encoded lokal gespeichert
+- Q&A Cache wird lokal gespeichert (bis zu 100 Einträge)
 - Keine Daten werden an externe Server gesendet (außer Anthropic API)
 - Empfehlung: Separaten API Key mit Budget-Limit verwenden
 
@@ -128,8 +129,8 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 - [ ] Favoriten/Schnellzugriff
 - [ ] Bilder hochladen (z.B. Fehlermeldungen)
 - [ ] Mehrsprachigkeit (EN/DE)
-- [ ] Dark/Light Mode Toggle
-- [ ] Offline-Antworten für häufige Fragen
+- [x] Dark/Light Mode Toggle
+- [x] Offline-Antworten für häufige Fragen (Q&A Cache im localStorage)
 
 ## 🤝 Beitragen
 

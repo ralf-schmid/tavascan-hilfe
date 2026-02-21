@@ -377,6 +377,41 @@
             }
         }
 
+        // ── Offline Q&A Cache ────────────────────────────────────────────────
+        const QA_CACHE_KEY = 'tavascan_qa_cache';
+        const QA_CACHE_MAX = 100;
+
+        function qaCache() {
+            try { return JSON.parse(localStorage.getItem(QA_CACHE_KEY) || '[]'); }
+            catch { return []; }
+        }
+
+        function saveToQACache(question, answer) {
+            const cache = qaCache();
+            const idx = cache.findIndex(e => e.question === question);
+            if (idx >= 0) cache.splice(idx, 1);
+            cache.unshift({ question, answer, ts: Date.now() });
+            if (cache.length > QA_CACHE_MAX) cache.splice(QA_CACHE_MAX);
+            localStorage.setItem(QA_CACHE_KEY, JSON.stringify(cache));
+        }
+
+        function findInQACache(question) {
+            const cache = qaCache();
+            const keywords = question.toLowerCase()
+                .split(/\s+/)
+                .map(w => w.replace(/[^a-zäöüß]/g, ''))
+                .filter(w => w.length > 3);
+            if (keywords.length === 0) return null;
+            let best = null, bestScore = 0;
+            for (const entry of cache) {
+                const entryLower = entry.question.toLowerCase();
+                const score = keywords.filter(kw => entryLower.includes(kw)).length / keywords.length;
+                if (score > bestScore) { bestScore = score; best = entry; }
+            }
+            return bestScore >= 0.7 ? best : null;
+        }
+        // ────────────────────────────────────────────────────────────────────
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
             loadTheme();
@@ -466,10 +501,20 @@
                     addMessage('user', transcript);
                     stopListening();
 
+                    // Offline-Cache prüfen
+                    const cached = findInQACache(transcript);
+                    if (cached) {
+                        addMessage('assistant', cached.answer, true);
+                        speakText(cached.answer);
+                        document.getElementById('status').textContent = 'Bereit zum Zuhören';
+                        return;
+                    }
+
                     document.getElementById('status').textContent = 'Claude denkt nach...';
 
                     try {
                         const response = await askClaude(transcript);
+                        saveToQACache(transcript, response);
                         addMessage('assistant', response);
                         speakText(response);
                         document.getElementById('status').textContent = 'Bereit zum Zuhören';
@@ -511,7 +556,11 @@
                 openSettings();
                 return;
             }
-            
+
+            // iOS Safari: TTS muss beim ersten User-Gesture entsperrt werden,
+            // sonst blockiert iOS den speak()-Aufruf nach async-Operationen.
+            unlockTTS();
+
             if (!isListening) {
                 startListening();
             } else {
@@ -552,10 +601,16 @@
         }
         
         // Add message to conversation
-        function addMessage(role, text) {
+        function addMessage(role, text, fromCache = false) {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${role === 'user' ? 'user-message' : 'assistant-message'}`;
             messageDiv.textContent = text;
+            if (fromCache) {
+                const badge = document.createElement('span');
+                badge.textContent = ' (gespeichert)';
+                badge.style.cssText = 'font-size:11px;opacity:0.6;display:block;margin-top:4px;';
+                messageDiv.appendChild(badge);
+            }
             
             const conversation = document.getElementById('conversation');
             conversation.appendChild(messageDiv);
@@ -678,16 +733,43 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
         }
         
         // Text-to-Speech
+        let ttsUnlocked = false;
+        let ttsKeepAlive = null;
+
+        // iOS Safari: speak() muss einmal im User-Gesture-Kontext aufgerufen
+        // werden, sonst wird es nach async-Operationen blockiert.
+        function unlockTTS() {
+            if (ttsUnlocked || !window.speechSynthesis) return;
+            const silent = new SpeechSynthesisUtterance('');
+            silent.volume = 0;
+            window.speechSynthesis.speak(silent);
+            ttsUnlocked = true;
+        }
+
         function speakText(text) {
-            // Vorherige Sprachausgabe stoppen
+            if (!window.speechSynthesis) return;
             window.speechSynthesis.cancel();
-            
+            clearInterval(ttsKeepAlive);
+
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang = 'de-DE';
-            utterance.rate = 0.85; // Langsamer für Senioren
+            utterance.rate = 0.85;
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
-            
+
+            // iOS Safari bricht TTS nach ~15 s ab – pause/resume hält es am Laufen
+            ttsKeepAlive = setInterval(() => {
+                if (!window.speechSynthesis.speaking) {
+                    clearInterval(ttsKeepAlive);
+                    return;
+                }
+                window.speechSynthesis.pause();
+                window.speechSynthesis.resume();
+            }, 10000);
+
+            utterance.onend = () => clearInterval(ttsKeepAlive);
+            utterance.onerror = () => clearInterval(ttsKeepAlive);
+
             window.speechSynthesis.speak(utterance);
         }
     </script>
