@@ -596,6 +596,8 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
             try {
                 response = await fetch('https://api.anthropic.com/v1/messages', {
                     method: 'POST',
+                    mode: 'cors',
+                    credentials: 'omit',
                     headers: {
                         'Content-Type': 'application/json',
                         'x-api-key': config.apiKey,
