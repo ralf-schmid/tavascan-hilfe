@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cupra-assistant-v2';
+const CACHE_NAME = 'cupra-assistant-v3';
 const urlsToCache = [
   './index.html',
   './manifest.json',
@@ -27,17 +27,14 @@ self.addEventListener('activate', event => {
   );
 });
 
-// Fetch - nur statische Assets cachen, alles andere direkt durchleiten
+// Fetch - NUR same-origin GET-Anfragen abfangen und cachen.
+// Cross-origin-Anfragen (API, Markdown von GitHub) werden NICHT angefasst.
 self.addEventListener('fetch', event => {
-  // Alle Nicht-GET-Anfragen (z.B. API POST) direkt durchleiten
-  if (event.request.method !== 'GET') {
-    event.respondWith(fetch(event.request));
-    return;
-  }
+  const url = new URL(event.request.url);
 
-  // Externe API-Aufrufe direkt durchleiten
-  if (event.request.url.startsWith('https://api.anthropic.com')) {
-    event.respondWith(fetch(event.request));
+  // Nur same-origin GET-Anfragen behandeln
+  if (url.origin !== self.location.origin || event.request.method !== 'GET') {
+    // Kein event.respondWith() -> Browser behandelt nativ
     return;
   }
 
