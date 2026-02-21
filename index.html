@@ -332,19 +332,37 @@
     <!-- Settings Modal -->
     <div class="modal" id="settingsModal">
         <div class="modal-content">
-            <h2>⚙️ Einrichtung</h2>
-            
+            <h2>⚙️ Einrichtung / Setup</h2>
+
             <div class="form-group">
                 <label>Claude API Key</label>
                 <input type="password" id="apiKeyInput" placeholder="sk-ant-...">
-                <small style="color: rgba(255,255,255,0.6); font-size: 12px;">
-                    Erhältlich unter: <a href="https://console.anthropic.com/" target="_blank" style="color: #4ecca3;">console.anthropic.com</a>
+                <small style="color:var(--status-color);font-size:12px;">
+                    Erhältlich unter: <a href="https://console.anthropic.com/" target="_blank" style="color:#4ecca3;">console.anthropic.com</a>
                 </small>
             </div>
-            
+
+            <div class="form-group">
+                <label>Sprache / Language</label>
+                <div style="display:flex;gap:24px;margin-top:8px;">
+                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:15px;">
+                        <input type="radio" name="lang" id="langDe" value="de" style="accent-color:#e94560;width:16px;height:16px;"> Deutsch
+                    </label>
+                    <label style="display:flex;align-items:center;gap:7px;cursor:pointer;font-size:15px;">
+                        <input type="radio" name="lang" id="langEn" value="en" style="accent-color:#e94560;width:16px;height:16px;"> English
+                    </label>
+                </div>
+            </div>
+
             <div class="button-group">
                 <button class="btn btn-secondary" onclick="closeSettings()">Abbrechen</button>
                 <button class="btn btn-primary" onclick="saveSettings()">Speichern</button>
+            </div>
+
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border);">
+                <button class="btn btn-secondary" onclick="exportHistory()" style="width:100%;">
+                    📋 Gespräch exportieren / Export History
+                </button>
             </div>
         </div>
     </div>
@@ -354,8 +372,55 @@
         const MANUAL_URL = 'anleitung_tavascan.md';
 
         let config = {
-            apiKey: localStorage.getItem('claude_api_key') || ''
+            apiKey: localStorage.getItem('claude_api_key') || '',
+            lang: localStorage.getItem('lang') || 'de'
         };
+
+        // ── Übersetzungen ────────────────────────────────────────────────────
+        const T = {
+            de: {
+                welcome:     'Hallo Horst! Drücke den Mikrofon-Button und stelle deine Frage zum Cupra Tavascan.',
+                ready:       'Bereit zum Zuhören',
+                listening:   'Ich höre zu...',
+                thinking:    'Claude denkt nach...',
+                errorRetry:  'Fehler – nochmal versuchen',
+                noSpeech:    'Keine Sprache erkannt – nochmal versuchen',
+                micDenied:   'Mikrofon-Zugriff verweigert',
+                setupNeeded: 'Bitte erst Setup durchführen',
+                cached:      '(gespeichert)',
+                noSpeechRec: 'Spracherkennung wird von diesem Browser leider nicht unterstützt.',
+                noSpeechAlert: 'Spracherkennung wird von diesem Browser nicht unterstützt.',
+                noExport:    'Noch kein Gespräch zum Exportieren.',
+                exportLabel: 'Gesprächsverlauf',
+                exportedAt:  'Exportiert',
+                horst:       'Horst',
+                assistant:   'Assistent',
+                manualPrefix: 'Relevante Auszüge aus der Cupra Tavascan Bedienungsanleitung:',
+                questionLabel: 'Frage von Horst',
+            },
+            en: {
+                welcome:     'Hello! Press the microphone button and ask your question about the Cupra Tavascan.',
+                ready:       'Ready to listen',
+                listening:   'Listening...',
+                thinking:    'Claude is thinking...',
+                errorRetry:  'Error – please try again',
+                noSpeech:    'No speech detected – please try again',
+                micDenied:   'Microphone access denied',
+                setupNeeded: 'Please complete setup first',
+                cached:      '(cached)',
+                noSpeechRec: 'Speech recognition is not supported by this browser.',
+                noSpeechAlert: 'Speech recognition is not supported by this browser.',
+                noExport:    'No conversation to export yet.',
+                exportLabel: 'Conversation History',
+                exportedAt:  'Exported',
+                horst:       'Horst',
+                assistant:   'Assistant',
+                manualPrefix: 'Relevant excerpts from the Cupra Tavascan owner\'s manual:',
+                questionLabel: 'Question',
+            }
+        };
+        function t(key) { return T[config.lang]?.[key] ?? T.de[key]; }
+        // ────────────────────────────────────────────────────────────────────
 
         let isListening = false;
         let recognition;
@@ -431,8 +496,10 @@
         function loadConfig() {
             if (config.apiKey) {
                 document.getElementById('micButton').disabled = false;
-                document.getElementById('status').textContent = 'Bereit zum Zuhören';
-                addMessage('assistant', 'Hallo Horst! Drücke den Mikrofon-Button und stelle deine Frage zum Cupra Tavascan.');
+                document.getElementById('status').textContent = t('ready');
+                addMessage('assistant', t('welcome'));
+            } else {
+                document.getElementById('status').textContent = t('setupNeeded');
             }
         }
 
@@ -441,7 +508,7 @@
             if (manualContent) return manualContent;
             const response = await fetch(MANUAL_URL);
             if (!response.ok) {
-                throw new Error(`Anleitung konnte nicht von GitHub geladen werden (HTTP ${response.status})`);
+                throw new Error(`Anleitung konnte nicht geladen werden (HTTP ${response.status})`);
             }
             manualContent = await response.text();
             return manualContent;
@@ -461,6 +528,8 @@
         function openSettings() {
             document.getElementById('settingsModal').classList.add('active');
             document.getElementById('apiKeyInput').value = config.apiKey;
+            const langRadio = document.querySelector(`input[name="lang"][value="${config.lang}"]`);
+            if (langRadio) langRadio.checked = true;
         }
         
         function closeSettings() {
@@ -469,18 +538,21 @@
         
         async function saveSettings() {
             const apiKey = document.getElementById('apiKeyInput').value.trim();
+            const lang = document.querySelector('input[name="lang"]:checked')?.value || 'de';
 
             if (!apiKey) {
-                alert('Bitte gib deinen Claude API Key ein.');
+                alert(lang === 'en' ? 'Please enter your Claude API Key.' : 'Bitte gib deinen Claude API Key ein.');
                 return;
             }
 
             config.apiKey = apiKey;
+            config.lang = lang;
             localStorage.setItem('claude_api_key', apiKey);
+            localStorage.setItem('lang', lang);
 
             updateSetupIndicator();
             document.getElementById('micButton').disabled = false;
-            document.getElementById('status').textContent = 'Bereit zum Zuhören';
+            document.getElementById('status').textContent = t('ready');
 
             setTimeout(() => {
                 closeSettings();
@@ -492,10 +564,10 @@
         function initSpeechRecognition() {
             if ('webkitSpeechRecognition' in window) {
                 recognition = new webkitSpeechRecognition();
-                recognition.lang = 'de-DE';
+                recognition.lang = config.lang === 'en' ? 'en-US' : 'de-DE';
                 recognition.continuous = false;
                 recognition.interimResults = false;
-                
+
                 recognition.onresult = async (event) => {
                     const transcript = event.results[0][0].transcript;
                     addMessage('user', transcript);
@@ -506,47 +578,40 @@
                     if (cached) {
                         addMessage('assistant', cached.answer, true);
                         speakText(cached.answer);
-                        document.getElementById('status').textContent = 'Bereit zum Zuhören';
+                        document.getElementById('status').textContent = t('ready');
                         return;
                     }
 
-                    document.getElementById('status').textContent = 'Claude denkt nach...';
+                    document.getElementById('status').textContent = t('thinking');
 
                     try {
                         const response = await askClaude(transcript);
                         saveToQACache(transcript, response);
                         addMessage('assistant', response);
                         speakText(response);
-                        document.getElementById('status').textContent = 'Bereit zum Zuhören';
+                        document.getElementById('status').textContent = t('ready');
                     } catch (error) {
                         const errorText = error.message || 'Unbekannter Fehler';
                         addMessage('assistant', `Fehler: ${errorText}`);
-                        document.getElementById('status').textContent = 'Fehler - nochmal versuchen';
+                        document.getElementById('status').textContent = t('errorRetry');
                     }
                 };
-                
+
                 recognition.onerror = (event) => {
                     console.error('Speech Recognition Error:', event.error);
                     stopListening();
-                    
-                    let errorMessage = 'Fehler - bitte nochmal versuchen';
-                    if (event.error === 'no-speech') {
-                        errorMessage = 'Keine Sprache erkannt - nochmal versuchen';
-                    } else if (event.error === 'audio-capture') {
-                        errorMessage = 'Mikrofon-Zugriff verweigert';
-                    }
-                    
-                    document.getElementById('status').textContent = errorMessage;
+                    let msg = t('errorRetry');
+                    if (event.error === 'no-speech')      msg = t('noSpeech');
+                    if (event.error === 'audio-capture')  msg = t('micDenied');
+                    document.getElementById('status').textContent = msg;
                 };
-                
+
                 recognition.onend = () => {
-                    if (isListening) {
-                        stopListening();
-                    }
+                    if (isListening) stopListening();
                 };
             } else {
                 console.error('Speech Recognition nicht unterstützt');
-                addMessage('assistant', 'Spracherkennung wird von diesem Browser leider nicht unterstützt.');
+                addMessage('assistant', t('noSpeechRec'));
             }
         }
         
@@ -570,14 +635,12 @@
         
         function startListening() {
             if (!recognition) {
-                alert('Spracherkennung wird von diesem Browser nicht unterstützt.');
+                alert(t('noSpeechAlert'));
                 return;
             }
-            
             isListening = true;
             document.getElementById('micButton').classList.add('listening');
-            document.getElementById('status').textContent = 'Ich höre zu...';
-            
+            document.getElementById('status').textContent = t('listening');
             try {
                 recognition.start();
             } catch (error) {
@@ -585,18 +648,13 @@
                 stopListening();
             }
         }
-        
+
         function stopListening() {
             isListening = false;
             document.getElementById('micButton').classList.remove('listening');
-            document.getElementById('status').textContent = 'Bereit zum Zuhören';
-            
+            document.getElementById('status').textContent = t('ready');
             if (recognition) {
-                try {
-                    recognition.stop();
-                } catch (error) {
-                    console.error('Fehler beim Stoppen:', error);
-                }
+                try { recognition.stop(); } catch (e) { /* ignorieren */ }
             }
         }
         
@@ -607,7 +665,7 @@
             messageDiv.textContent = text;
             if (fromCache) {
                 const badge = document.createElement('span');
-                badge.textContent = ' (gespeichert)';
+                badge.textContent = ' ' + t('cached');
                 badge.style.cssText = 'font-size:11px;opacity:0.6;display:block;margin-top:4px;';
                 messageDiv.appendChild(badge);
             }
@@ -624,30 +682,45 @@
         
         // Relevante Abschnitte aus der Anleitung extrahieren (keyword-basiert)
         function extractRelevantSections(manual, question) {
-            const keywords = question.toLowerCase()
-                .split(/\s+/)
-                .map(w => w.replace(/[^a-zäöüß]/g, ''))
-                .filter(w => w.length > 3);
-
             const lines = manual.split('\n');
 
-            if (keywords.length === 0) {
-                return manual.slice(0, 40000);
+            // Schlüsselwörter: ≥3 Zeichen; zusätzlich rudimentäre Stammformen
+            const raw = question.toLowerCase()
+                .split(/\s+/)
+                .map(w => w.replace(/[^a-zäöüß]/g, ''))
+                .filter(w => w.length >= 3);
+
+            const keywords = new Set(raw);
+            for (const w of raw) {
+                // Häufige deutsche Flexionsendungen kürzen → Stammform
+                if (w.endsWith('ung')  && w.length > 5) keywords.add(w.slice(0, -3));
+                if (w.endsWith('ungen')&& w.length > 6) keywords.add(w.slice(0, -5));
+                if (w.endsWith('ieren')&& w.length > 6) keywords.add(w.slice(0, -5));
+                if (w.endsWith('ern')  && w.length > 5) keywords.add(w.slice(0, -3));
+                if (w.endsWith('ern')  && w.length > 5) keywords.add(w.slice(0, -2));
+                if (w.endsWith('en')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('er')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('es')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('em')   && w.length > 4) keywords.add(w.slice(0, -2));
+                if (w.endsWith('e')    && w.length > 4) keywords.add(w.slice(0, -1));
             }
+            const kwList = [...keywords].filter(k => k.length >= 3);
+
+            if (kwList.length === 0) return manual.slice(0, 100000);
 
             const included = new Set();
+            // Erste 40 Zeilen (Inhaltsverzeichnis) immer einschließen
+            for (let j = 0; j < Math.min(40, lines.length); j++) included.add(j);
+
             lines.forEach((line, i) => {
                 const lower = line.toLowerCase();
-                if (keywords.some(kw => lower.includes(kw))) {
-                    for (let j = Math.max(0, i - 5); j <= Math.min(lines.length - 1, i + 40); j++) {
+                if (kwList.some(kw => lower.includes(kw))) {
+                    // Mehr Kontext: 10 Zeilen vor, 80 Zeilen nach dem Treffer
+                    for (let j = Math.max(0, i - 10); j <= Math.min(lines.length - 1, i + 80); j++) {
                         included.add(j);
                     }
                 }
             });
-
-            if (included.size === 0) {
-                return manual.slice(0, 40000);
-            }
 
             let result = '';
             let prev = -2;
@@ -657,7 +730,12 @@
                 prev = idx;
             });
 
-            return result.length > 60000 ? result.slice(0, 60000) : result;
+            // Falls Extraktion zu wenig ergab, sicherheitshalber mehr vom Anfang hinzunehmen
+            if (result.length < 8000) {
+                result = manual.slice(0, 100000);
+            }
+
+            return result.length > 120000 ? result.slice(0, 120000) : result;
         }
 
         // Ask Claude via API
@@ -671,7 +749,23 @@
                 throw new Error(`Anleitung laden fehlgeschlagen: ${e.message}`);
             }
 
-            const systemPrompt = `Du bist Horsts persönlicher Cupra Tavascan Experte. Horst ist 75 Jahre alt, hat wenig Geduld und braucht kurze, klare Antworten ohne Umschweife.
+            const systemPrompt = config.lang === 'en'
+                ? `You are Horst's personal Cupra Tavascan expert. Horst is 75 years old, has little patience and needs short, clear answers without detours.
+
+HOW TO RESPOND:
+1. SHORT and DIRECT – Maximum 2-3 sentences. Give more details only when Horst asks.
+2. ONE solution – Do NOT mention multiple options or alternatives. Tell him exactly what to do.
+3. STEP by STEP – Number the steps (1., 2., 3.). One step = one action.
+4. SIMPLE LANGUAGE – As if explaining to a friend. No technical jargon.
+5. STAY PATIENT – Be friendly and helpful even with repeated questions.
+
+IMPORTANT FOR VOICE OUTPUT:
+- Keep answers as short as possible (Horst listens on his phone)
+- For long instructions: Give the first 2 steps first, then continue on request
+- No long introductions like "I'd be happy to help you..."
+
+Use only the attached owner's manual as your knowledge source. Answer in English.`
+                : `Du bist Horsts persönlicher Cupra Tavascan Experte. Horst ist 75 Jahre alt, hat wenig Geduld und braucht kurze, klare Antworten ohne Umschweife.
 
 SO ANTWORTEST DU:
 1. KURZ und DIREKT – Maximal 2-3 Sätze. Erst wenn Horst nachfragt, gibst du mehr Details.
@@ -687,7 +781,7 @@ WICHTIG FÜR SPRACHAUSGABE:
 
 Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
 
-            const userText = `Relevante Auszüge aus der Cupra Tavascan Bedienungsanleitung:\n\n${manualSection}\n\nFrage von Horst: ${question}`;
+            const userText = `${t('manualPrefix')}\n\n${manualSection}\n\n${t('questionLabel')}: ${question}`;
 
             const messages = [
                 ...conversationHistory.map(msg => ({
@@ -752,7 +846,7 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
             clearInterval(ttsKeepAlive);
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = 'de-DE';
+            utterance.lang = config.lang === 'en' ? 'en-US' : 'de-DE';
             utterance.rate = 0.85;
             utterance.pitch = 1.0;
             utterance.volume = 1.0;
@@ -772,6 +866,32 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
 
             window.speechSynthesis.speak(utterance);
         }
+
+        // ── Conversation History Export ──────────────────────────────────────
+        function exportHistory() {
+            if (conversationHistory.length === 0) {
+                alert(t('noExport'));
+                return;
+            }
+            const dateStr = new Date().toLocaleString(config.lang === 'en' ? 'en-US' : 'de-DE');
+            const sep = '─'.repeat(50);
+            let text = `Cupra Tavascan Assistent – ${t('exportLabel')}\n`;
+            text += `${t('exportedAt')}: ${dateStr}\n${sep}\n\n`;
+            for (const msg of conversationHistory) {
+                const role = msg.role === 'user' ? t('horst') : t('assistant');
+                text += `${role}:\n${msg.content}\n\n`;
+            }
+            const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `tavascan-${new Date().toISOString().slice(0, 10)}.txt`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+        // ────────────────────────────────────────────────────────────────────
     </script>
 </body>
 </html>
