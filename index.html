@@ -284,6 +284,21 @@
             background: var(--assistant-bg);
             color: var(--text);
         }
+
+        /* Toggle Switch (Sprachausgabe) */
+        .toggle-switch { position:relative; display:inline-block; width:46px; height:26px; flex-shrink:0; }
+        .toggle-switch input { opacity:0; width:0; height:0; }
+        .toggle-slider {
+            position:absolute; cursor:pointer; inset:0;
+            background:#555; border-radius:26px; transition:.25s;
+        }
+        .toggle-slider:before {
+            content:""; position:absolute;
+            width:20px; height:20px; left:3px; bottom:3px;
+            background:white; border-radius:50%; transition:.25s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background:#e94560; }
+        .toggle-switch input:checked + .toggle-slider:before { transform:translateX(20px); }
         
         .loading {
             text-align: center;
@@ -354,6 +369,16 @@
                 </div>
             </div>
 
+            <div class="form-group" style="margin-bottom:4px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;">
+                    <label style="margin:0;font-size:15px;">🔊 Sprachausgabe / Voice output</label>
+                    <label class="toggle-switch">
+                        <input type="checkbox" id="ttsToggle">
+                        <span class="toggle-slider"></span>
+                    </label>
+                </div>
+            </div>
+
             <div class="button-group">
                 <button class="btn btn-secondary" onclick="closeSettings()">Abbrechen</button>
                 <button class="btn btn-primary" onclick="saveSettings()">Speichern</button>
@@ -373,7 +398,8 @@
 
         let config = {
             apiKey: localStorage.getItem('claude_api_key') || '',
-            lang: localStorage.getItem('lang') || 'de'
+            lang: localStorage.getItem('lang') || 'de',
+            tts: localStorage.getItem('tts') !== 'false'
         };
 
         // ── Übersetzungen ────────────────────────────────────────────────────
@@ -397,6 +423,7 @@
                 assistant:   'Assistent',
                 manualPrefix: 'Relevante Auszüge aus der Cupra Tavascan Bedienungsanleitung:',
                 questionLabel: 'Frage von Horst',
+                ttsLabel: 'Sprachausgabe',
             },
             en: {
                 welcome:     'Hello! Press the microphone button and ask your question about the Cupra Tavascan.',
@@ -417,6 +444,7 @@
                 assistant:   'Assistant',
                 manualPrefix: 'Relevant excerpts from the Cupra Tavascan owner\'s manual:',
                 questionLabel: 'Question',
+                ttsLabel: 'Voice output',
             }
         };
         function t(key) { return T[config.lang]?.[key] ?? T.de[key]; }
@@ -530,6 +558,7 @@
             document.getElementById('apiKeyInput').value = config.apiKey;
             const langRadio = document.querySelector(`input[name="lang"][value="${config.lang}"]`);
             if (langRadio) langRadio.checked = true;
+            document.getElementById('ttsToggle').checked = config.tts;
         }
         
         function closeSettings() {
@@ -545,10 +574,13 @@
                 return;
             }
 
+            const tts = document.getElementById('ttsToggle').checked;
             config.apiKey = apiKey;
             config.lang = lang;
+            config.tts = tts;
             localStorage.setItem('claude_api_key', apiKey);
             localStorage.setItem('lang', lang);
+            localStorage.setItem('tts', tts);
 
             updateSetupIndicator();
             document.getElementById('micButton').disabled = false;
@@ -577,7 +609,7 @@
                     const cached = findInQACache(transcript);
                     if (cached) {
                         addMessage('assistant', cached.answer, true);
-                        speakText(cached.answer);
+                        if (config.tts) speakText(cached.answer);
                         document.getElementById('status').textContent = t('ready');
                         return;
                     }
@@ -588,7 +620,7 @@
                         const response = await askClaude(transcript);
                         saveToQACache(transcript, response);
                         addMessage('assistant', response);
-                        speakText(response);
+                        if (config.tts) speakText(response);
                         document.getElementById('status').textContent = t('ready');
                     } catch (error) {
                         const errorText = error.message || 'Unbekannter Fehler';
