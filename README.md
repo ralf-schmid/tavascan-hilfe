@@ -1,5 +1,7 @@
 # 🚗 Cupra Tavascan Assistent
 
+[![CI / Deploy](https://github.com/ralf-schmid/tavascan-hilfe/actions/workflows/ci.yml/badge.svg)](https://github.com/ralf-schmid/tavascan-hilfe/actions/workflows/ci.yml)
+
 Eine Progressive Web App (PWA) für den Cupra Tavascan — per Sprache oder Foto Fragen zur Bedienung stellen, Claude antwortet aus der Original-Bedienungsanleitung.
 
 ## 🎯 Features
@@ -8,12 +10,14 @@ Eine Progressive Web App (PWA) für den Cupra Tavascan — per Sprache oder Foto
 - 📷 **Foto-Analyse:** Fehlermeldungen oder Displayanzeigen fotografieren → Claude erklärt und sagt, was zu tun ist
 - 🌍 **Zweisprachig:** Deutsch und Englisch – Sprache im Setup wählbar (Spracherkennung, TTS und Antworten)
 - 🔊 **Sprachausgabe optional:** TTS per Toggle im Setup ein-/ausschalten
-- 📱 **PWA:** Installierbar wie eine native App auf dem iPhone
+- 📱 **PWA:** Installierbar wie eine native App auf dem iPhone – Home-Screen-Icon, Vollbild, offline-fähig
+- 🔄 **Automatische Updates:** Neue Versionen kommen beim nächsten App-Start automatisch an (kein Löschen des Icons, kein neuer API-Key nötig)
 - 📄 **Anleitung als Wissensbasis:** Markdown-Bedienungsanleitung direkt aus dem Repo
 - 💾 **Offline Q&A Cache:** Häufige Fragen werden lokal gespeichert und sofort beantwortet
 - 📋 **Gesprächsexport:** Konversation als TXT-Datei herunterladen (im Setup)
 - 🌓 **Dark/Light Mode:** Umschaltbar per Knopfdruck, Einstellung wird gespeichert
 - ⭐ **Favoriten:** Antworten mit Stern markieren → als Schnellzugriff-Chips abrufbar
+- 🔢 **Versionsanzeige:** Aktueller Build-Stand sichtbar im Setup-Dialog
 - 🔒 **Lokal gespeichert:** API Key, Spracheinstellung, Cache und Favoriten bleiben auf dem Gerät
 
 ## 🚀 Live Demo
@@ -39,7 +43,11 @@ Die App ist live unter: **[DEINE-URL-HIER]**
 
 ### Für Entwickler
 
-Siehe [GITHUB_DEPLOYMENT.md](GITHUB_DEPLOYMENT.md) für detaillierte Anleitung.
+```bash
+npm test          # Automatisierte Tests lokal ausführen (Node ≥ 20)
+```
+
+Siehe [GITHUB_DEPLOYMENT.md](GITHUB_DEPLOYMENT.md) für detaillierte Deploy-Anleitung.
 
 ## 💰 Kosten
 
@@ -54,11 +62,13 @@ Siehe [GITHUB_DEPLOYMENT.md](GITHUB_DEPLOYMENT.md) für detaillierte Anleitung.
 ## 🛠️ Technologie-Stack
 
 - **Frontend:** Vanilla JavaScript, HTML5, CSS3
-- **PWA:** Service Worker, Web App Manifest
+- **PWA:** Service Worker (Network-first für HTML → auto-update), Web App Manifest
 - **Speech:** Web Speech API (Speech Recognition + Text-to-Speech)
 - **Vision:** Claude Vision API (Base64-Bildübertragung, kein eigener Server)
 - **AI:** Anthropic Claude API (claude-sonnet-4-20250514)
 - **Hosting:** GitHub Pages
+- **CI/CD:** GitHub Actions – Tests auf jedem Push, automatisches Deploy nach `main`
+- **Tests:** Node.js built-in `node:test` (kein Framework, keine Dependencies)
 
 ## 🎨 Anpassungen
 
@@ -133,6 +143,9 @@ Ersetze `icon-192.png` und `icon-512.png` mit deinen eigenen Icons.
 - [x] Mehrsprachigkeit DE/EN (Spracherkennung, TTS, Antworten)
 - [x] Dark/Light Mode Toggle
 - [x] Offline-Antworten für häufige Fragen (Q&A Cache im localStorage)
+- [x] Automatische Tests (npm test) mit CI-Integration
+- [x] PWA-Updates ohne Icon löschen – Service Worker Network-first + auto-reload
+- [x] Versionsanzeige im Setup-Dialog (Commit-Hash + Build-Datum)
 
 ## 🤝 Beitragen
 
