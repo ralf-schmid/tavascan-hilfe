@@ -271,15 +271,6 @@
             60%, 100% { content: '...'; }
         }
         
-        .file-status {
-            margin-top: 10px;
-            padding: 10px;
-            background: rgba(78, 204, 163, 0.2);
-            border-radius: 8px;
-            font-size: 13px;
-            color: #4ecca3;
-        }
-        
         .error {
             background: rgba(233, 69, 96, 0.2);
             color: #e94560;
@@ -295,7 +286,7 @@
     
     <div class="conversation" id="conversation">
         <div class="message assistant-message">
-            Willkommen! Tippe oben auf "⚙️ Setup", um deinen API-Key und die Bedienungsanleitung hochzuladen.
+            Willkommen! Tippe oben auf "⚙️ Setup", um deinen API-Key einzugeben.
         </div>
     </div>
     
@@ -317,12 +308,6 @@
                 </small>
             </div>
             
-            <div class="form-group">
-                <label>Bedienungsanleitung (PDF)</label>
-                <input type="file" id="pdfInput" accept=".pdf">
-                <div id="fileStatus"></div>
-            </div>
-            
             <div class="button-group">
                 <button class="btn btn-secondary" onclick="closeSettings()">Abbrechen</button>
                 <button class="btn btn-primary" onclick="saveSettings()">Speichern</button>
@@ -332,15 +317,16 @@
 
     <script>
         // State Management
+        const MANUAL_URL = 'https://raw.githubusercontent.com/ralf-schmid/tavascan-hilfe/main/anleitung_tavascan.md';
+
         let config = {
-            apiKey: localStorage.getItem('claude_api_key') || '',
-            pdfBase64: localStorage.getItem('pdf_base64') || '',
-            pdfName: localStorage.getItem('pdf_name') || ''
+            apiKey: localStorage.getItem('claude_api_key') || ''
         };
-        
+
         let isListening = false;
         let recognition;
         let conversationHistory = [];
+        let manualContent = null;
         
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
@@ -358,23 +344,28 @@
         
         // Load saved configuration
         function loadConfig() {
-            if (config.apiKey && config.pdfBase64) {
+            if (config.apiKey) {
                 document.getElementById('micButton').disabled = false;
                 document.getElementById('status').textContent = 'Bereit zum Zuhören';
                 addMessage('assistant', 'Hallo Horst! Drücke den Mikrofon-Button und stelle deine Frage zum Cupra Tavascan.');
             }
-            
-            // Zeige Dateiname an, falls vorhanden
-            if (config.pdfName) {
-                document.getElementById('fileStatus').innerHTML = 
-                    `<div class="file-status">✓ ${config.pdfName} geladen</div>`;
+        }
+
+        // Fetch manual from GitHub
+        async function fetchManual() {
+            if (manualContent) return manualContent;
+            const response = await fetch(MANUAL_URL);
+            if (!response.ok) {
+                throw new Error(`Anleitung konnte nicht geladen werden (${response.status})`);
             }
+            manualContent = await response.text();
+            return manualContent;
         }
         
         // Update setup indicator
         function updateSetupIndicator() {
             const indicator = document.getElementById('setupIndicator');
-            if (config.apiKey && config.pdfBase64) {
+            if (config.apiKey) {
                 indicator.classList.add('ready');
             } else {
                 indicator.classList.remove('ready');
@@ -393,59 +384,23 @@
         
         async function saveSettings() {
             const apiKey = document.getElementById('apiKeyInput').value.trim();
-            const pdfFile = document.getElementById('pdfInput').files[0];
-            
+
             if (!apiKey) {
                 alert('Bitte gib deinen Claude API Key ein.');
                 return;
             }
-            
-            // API Key speichern
+
             config.apiKey = apiKey;
             localStorage.setItem('claude_api_key', apiKey);
-            
-            // PDF verarbeiten, falls hochgeladen
-            if (pdfFile) {
-                document.getElementById('fileStatus').innerHTML = 
-                    '<div class="loading">PDF wird verarbeitet</div>';
-                
-                try {
-                    const base64 = await fileToBase64(pdfFile);
-                    config.pdfBase64 = base64;
-                    config.pdfName = pdfFile.name;
-                    localStorage.setItem('pdf_base64', base64);
-                    localStorage.setItem('pdf_name', pdfFile.name);
-                    
-                    document.getElementById('fileStatus').innerHTML = 
-                        `<div class="file-status">✓ ${pdfFile.name} erfolgreich hochgeladen</div>`;
-                } catch (error) {
-                    document.getElementById('fileStatus').innerHTML = 
-                        `<div class="file-status error">❌ Fehler beim Hochladen: ${error.message}</div>`;
-                    return;
-                }
-            }
-            
+
             updateSetupIndicator();
             document.getElementById('micButton').disabled = false;
             document.getElementById('status').textContent = 'Bereit zum Zuhören';
-            
+
             setTimeout(() => {
                 closeSettings();
                 location.reload();
-            }, 1000);
-        }
-        
-        // Convert File to Base64
-        function fileToBase64(file) {
-            return new Promise((resolve, reject) => {
-                const reader = new FileReader();
-                reader.onload = () => {
-                    const base64 = reader.result.split(',')[1];
-                    resolve(base64);
-                };
-                reader.onerror = reject;
-                reader.readAsDataURL(file);
-            });
+            }, 500);
         }
         
         // Speech Recognition
@@ -501,7 +456,7 @@
         
         // Microphone Button
         document.getElementById('micButton').addEventListener('click', () => {
-            if (!config.apiKey || !config.pdfBase64) {
+            if (!config.apiKey) {
                 openSettings();
                 return;
             }
@@ -585,7 +540,10 @@ BEISPIEL GUTE ANTWORT:
 BEISPIEL SCHLECHTE ANTWORT:
 "Für die Sitzheizung gibt es verschiedene Möglichkeiten. Du könntest entweder über das zentrale Display gehen oder alternativ..."
 
-Nutze die hochgeladene Bedienungsanleitung als deine Wissensquelle.`;
+Nutze die Bedienungsanleitung als deine Wissensquelle.`;
+
+                // Anleitung von GitHub laden (wird gecacht nach erstem Laden)
+                const manual = await fetchManual();
 
                 // Messages aufbauen
                 const messages = [
@@ -599,9 +557,8 @@ Nutze die hochgeladene Bedienungsanleitung als deine Wissensquelle.`;
                             {
                                 type: 'document',
                                 source: {
-                                    type: 'base64',
-                                    media_type: 'application/pdf',
-                                    data: config.pdfBase64
+                                    type: 'text',
+                                    data: manual
                                 },
                                 cache_control: { type: 'ephemeral' }
                             },
