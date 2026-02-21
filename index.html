@@ -325,6 +325,55 @@
             background: rgba(233, 69, 96, 0.2);
             color: #e94560;
         }
+
+        /* ── Schnellzugriff-Chips ─────────────────────────────────────────── */
+        .quick-chips {
+            display: flex;
+            gap: 8px;
+            padding: 10px 16px;
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            scrollbar-width: none;
+            border-top: 1px solid var(--border);
+            background: var(--controls-bg);
+            flex-shrink: 0;
+        }
+        .quick-chips:empty { display: none; }
+        .quick-chips::-webkit-scrollbar { display: none; }
+
+        .chip {
+            flex-shrink: 0;
+            padding: 7px 14px;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            background: var(--assistant-bg);
+            color: var(--text);
+            font-size: 14px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background 0.15s, border-color 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .chip:active {
+            background: rgba(233, 69, 96, 0.2);
+            border-color: #e94560;
+        }
+
+        .star-btn {
+            display: inline-block;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 17px;
+            line-height: 1;
+            padding: 6px 0 0 8px;
+            opacity: 0.45;
+            float: right;
+            transition: opacity 0.15s, transform 0.15s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .star-btn.starred { opacity: 1; }
+        .star-btn:active { transform: scale(1.35); }
     </style>
 </head>
 <body>
@@ -343,6 +392,8 @@
         </div>
     </div>
     
+    <div class="quick-chips" id="quickChips"></div>
+
     <div class="controls">
         <div class="controls-buttons">
             <button class="camera-button" id="cameraButton" disabled title="Foto aufnehmen / hochladen">📷</button>
@@ -432,6 +483,8 @@
                 manualPrefix: 'Relevante Auszüge aus der Cupra Tavascan Bedienungsanleitung:',
                 questionLabel: 'Frage von Horst',
                 ttsLabel: 'Sprachausgabe',
+                star:   'Als Favorit speichern',
+                unstar: 'Aus Favoriten entfernen',
             },
             en: {
                 welcome:     'Hello! Press the microphone button and ask your question about the Cupra Tavascan.',
@@ -453,6 +506,8 @@
                 manualPrefix: 'Relevant excerpts from the Cupra Tavascan owner\'s manual:',
                 questionLabel: 'Question',
                 ttsLabel: 'Voice output',
+                star:   'Save as favourite',
+                unstar: 'Remove from favourites',
             }
         };
         function t(key) { return T[config.lang]?.[key] ?? T.de[key]; }
@@ -481,6 +536,54 @@
         // ── Offline Q&A Cache ────────────────────────────────────────────────
         const QA_CACHE_KEY = 'tavascan_qa_cache';
         const QA_CACHE_MAX = 100;
+        // ── Favoriten / Schnellzugriff ───────────────────────────────────────
+        const FAVS_KEY = 'tavascan_favorites';
+        const FAVS_MAX = 8;
+
+        function loadFavs() {
+            try { return JSON.parse(localStorage.getItem(FAVS_KEY) || '[]'); }
+            catch { return []; }
+        }
+
+        function saveFav(question, answer) {
+            const favs = loadFavs();
+            if (favs.some(f => f.question === question)) return;
+            favs.unshift({ question, answer });
+            if (favs.length > FAVS_MAX) favs.splice(FAVS_MAX);
+            localStorage.setItem(FAVS_KEY, JSON.stringify(favs));
+            renderChips();
+        }
+
+        function removeFav(question) {
+            const favs = loadFavs().filter(f => f.question !== question);
+            localStorage.setItem(FAVS_KEY, JSON.stringify(favs));
+            renderChips();
+        }
+
+        function isFav(question) {
+            return loadFavs().some(f => f.question === question);
+        }
+
+        function renderChips() {
+            const favs = loadFavs();
+            const container = document.getElementById('quickChips');
+            container.innerHTML = '';
+            for (const fav of favs) {
+                const btn = document.createElement('button');
+                btn.className = 'chip';
+                const label = fav.question.length > 32 ? fav.question.slice(0, 30) + '…' : fav.question;
+                btn.textContent = '⭐ ' + label;
+                btn.title = fav.question;
+                btn.addEventListener('click', () => {
+                    addMessage('user', fav.question);
+                    addMessage('assistant', fav.answer, true);
+                    if (config.tts) speakText(fav.answer);
+                    const conv = document.getElementById('conversation');
+                    conv.scrollTop = conv.scrollHeight;
+                });
+                container.appendChild(btn);
+            }
+        }
 
         function qaCache() {
             try { return JSON.parse(localStorage.getItem(QA_CACHE_KEY) || '[]'); }
@@ -514,11 +617,14 @@
         // ────────────────────────────────────────────────────────────────────
 
         // Initialize
+        let lastQuestion = '';
+
         document.addEventListener('DOMContentLoaded', () => {
             loadTheme();
             loadConfig();
             initSpeechRecognition();
             updateSetupIndicator();
+            renderChips();
             
             // Service Worker registrieren
             if ('serviceWorker' in navigator) {
@@ -612,6 +718,7 @@
 
                 recognition.onresult = async (event) => {
                     const transcript = event.results[0][0].transcript;
+                    lastQuestion = transcript;
                     addMessage('user', transcript);
                     stopListening();
 
@@ -686,6 +793,7 @@
             const file = event.target.files[0];
             if (!file) return;
             event.target.value = ''; // Reset für erneute Auswahl derselben Datei
+            lastQuestion = '';       // kein Stern-Button für Foto-Antworten
 
             const reader = new FileReader();
             reader.onload = async (e) => {
@@ -777,6 +885,31 @@
                 badge.textContent = ' ' + t('cached');
                 badge.style.cssText = 'font-size:11px;opacity:0.6;display:block;margin-top:4px;';
                 messageDiv.appendChild(badge);
+            }
+            // Stern-Button für Assistenten-Antworten auf Sprachfragen
+            if (role === 'assistant' && lastQuestion) {
+                const q = lastQuestion;
+                const a = text;
+                const starred = isFav(q);
+                const starBtn = document.createElement('button');
+                starBtn.className = 'star-btn' + (starred ? ' starred' : '');
+                starBtn.textContent = starred ? '⭐' : '☆';
+                starBtn.title = starred ? t('unstar') : t('star');
+                starBtn.addEventListener('click', () => {
+                    if (isFav(q)) {
+                        removeFav(q);
+                        starBtn.textContent = '☆';
+                        starBtn.classList.remove('starred');
+                        starBtn.title = t('star');
+                        starBtn.style.opacity = '';
+                    } else {
+                        saveFav(q, a);
+                        starBtn.textContent = '⭐';
+                        starBtn.classList.add('starred');
+                        starBtn.title = t('unstar');
+                    }
+                });
+                messageDiv.appendChild(starBtn);
             }
             
             const conversation = document.getElementById('conversation');
