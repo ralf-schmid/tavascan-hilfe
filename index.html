@@ -1177,17 +1177,28 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
             const voices = window.speechSynthesis.getVoices();
             if (!voices.length) return null;
             const langCode  = lang === 'en' ? 'en' : 'de';
-            const fullLang  = lang === 'en' ? 'en-US' : 'de-DE';
             const patterns  = MALE_VOICE_NAMES[langCode];
             // Nur Stimmen der passenden Sprache
             const matching  = voices.filter(v => v.lang.toLowerCase().startsWith(langCode));
+
+            // DEBUG: alle verfügbaren Stimmen in die Konsole ausgeben
+            console.group('[TTS Debug] Alle verfügbaren Stimmen (' + voices.length + ')');
+            voices.forEach(v => console.log(`  ${v.lang.padEnd(8)} | ${v.name} | local=${v.localService} | default=${v.default}`));
+            console.groupEnd();
+            console.log('[TTS Debug] Passende Stimmen für "' + langCode + '" (' + matching.length + '):', matching.map(v => v.name));
+
             // Bekannte männliche Namen bevorzugen
             for (const pat of patterns) {
                 const hit = matching.find(v => v.name.toLowerCase().includes(pat));
-                if (hit) return hit;
+                if (hit) {
+                    console.log('[TTS Debug] Gewählte Stimme:', hit.name, '| Muster:', pat);
+                    return hit;
+                }
             }
             // Fallback: erste verfügbare Stimme der Sprache
-            return matching[0] || null;
+            const fallback = matching[0] || null;
+            console.log('[TTS Debug] Kein männlicher Name gefunden → Fallback:', fallback?.name ?? 'keine');
+            return fallback;
         }
 
         function speakText(text) {
