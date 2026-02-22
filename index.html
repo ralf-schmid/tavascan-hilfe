@@ -1167,16 +1167,43 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
             ttsUnlocked = true;
         }
 
+        // Männliche Stimmnamen je Sprache (iOS/macOS, Android Chrome, Windows)
+        const MALE_VOICE_NAMES = {
+            'de': ['markus', 'thomas', 'stefan', 'daniel', 'hans', 'yannick', 'jan'],
+            'en': ['daniel', 'alex', 'tom', 'david', 'james', 'fred', 'george', 'jorge'],
+        };
+
+        function getPreferredVoice(lang) {
+            const voices = window.speechSynthesis.getVoices();
+            if (!voices.length) return null;
+            const langCode  = lang === 'en' ? 'en' : 'de';
+            const fullLang  = lang === 'en' ? 'en-US' : 'de-DE';
+            const patterns  = MALE_VOICE_NAMES[langCode];
+            // Nur Stimmen der passenden Sprache
+            const matching  = voices.filter(v => v.lang.toLowerCase().startsWith(langCode));
+            // Bekannte männliche Namen bevorzugen
+            for (const pat of patterns) {
+                const hit = matching.find(v => v.name.toLowerCase().includes(pat));
+                if (hit) return hit;
+            }
+            // Fallback: erste verfügbare Stimme der Sprache
+            return matching[0] || null;
+        }
+
         function speakText(text) {
             if (!window.speechSynthesis) return;
             window.speechSynthesis.cancel();
             clearInterval(ttsKeepAlive);
 
             const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = config.lang === 'en' ? 'en-US' : 'de-DE';
-            utterance.rate = 0.85;
-            utterance.pitch = 1.0;
+            utterance.lang   = config.lang === 'en' ? 'en-US' : 'de-DE';
+            utterance.rate   = 1.0;   // Normalgeschwindigkeit
+            utterance.pitch  = 0.9;   // leicht tiefer für männlichere Wirkung
             utterance.volume = 1.0;
+
+            // Männliche Stimme auswählen (wenn Voices bereits geladen)
+            const voice = getPreferredVoice(config.lang);
+            if (voice) utterance.voice = voice;
 
             // iOS Safari bricht TTS nach ~15 s ab – pause/resume hält es am Laufen
             ttsKeepAlive = setInterval(() => {
