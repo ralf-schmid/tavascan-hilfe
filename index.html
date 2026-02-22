@@ -1176,29 +1176,15 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
         function getPreferredVoice(lang) {
             const voices = window.speechSynthesis.getVoices();
             if (!voices.length) return null;
-            const langCode  = lang === 'en' ? 'en' : 'de';
-            const patterns  = MALE_VOICE_NAMES[langCode];
-            // Nur Stimmen der passenden Sprache
-            const matching  = voices.filter(v => v.lang.toLowerCase().startsWith(langCode));
-
-            // DEBUG: alle verfügbaren Stimmen in die Konsole ausgeben
-            console.group('[TTS Debug] Alle verfügbaren Stimmen (' + voices.length + ')');
-            voices.forEach(v => console.log(`  ${v.lang.padEnd(8)} | ${v.name} | local=${v.localService} | default=${v.default}`));
-            console.groupEnd();
-            console.log('[TTS Debug] Passende Stimmen für "' + langCode + '" (' + matching.length + '):', matching.map(v => v.name));
-
-            // Bekannte männliche Namen bevorzugen
+            const langCode = lang === 'en' ? 'en' : 'de';
+            const patterns = MALE_VOICE_NAMES[langCode];
+            const matching = voices.filter(v => v.lang.toLowerCase().startsWith(langCode));
             for (const pat of patterns) {
                 const hit = matching.find(v => v.name.toLowerCase().includes(pat));
-                if (hit) {
-                    console.log('[TTS Debug] Gewählte Stimme:', hit.name, '| Muster:', pat);
-                    return hit;
-                }
+                if (hit) return hit;
             }
-            // Fallback: erste verfügbare Stimme der Sprache
-            const fallback = matching[0] || null;
-            console.log('[TTS Debug] Kein männlicher Name gefunden → Fallback:', fallback?.name ?? 'keine');
-            return fallback;
+            // Kein männlicher Name gefunden – Fallback auf erste Stimme der Sprache
+            return matching[0] || null;
         }
 
         function speakText(text) {
@@ -1208,13 +1194,16 @@ Nutze nur die unten angehängte Bedienungsanleitung als Wissensquelle.`;
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.lang   = config.lang === 'en' ? 'en-US' : 'de-DE';
-            utterance.rate   = 1.0;   // Normalgeschwindigkeit
-            utterance.pitch  = 0.9;   // leicht tiefer für männlichere Wirkung
+            utterance.rate   = 1.0;    // Normalgeschwindigkeit
             utterance.volume = 1.0;
 
-            // Männliche Stimme auswählen (wenn Voices bereits geladen)
+            // Männliche Stimme auswählen; pitch je nach Ergebnis
             const voice = getPreferredVoice(config.lang);
             if (voice) utterance.voice = voice;
+            // Kein nativer Männername → Pitch absenken damit es tiefer klingt
+            const isMale = voice && MALE_VOICE_NAMES[config.lang === 'en' ? 'en' : 'de']
+                .some(pat => voice.name.toLowerCase().includes(pat));
+            utterance.pitch = isMale ? 1.0 : 0.75;
 
             // iOS Safari bricht TTS nach ~15 s ab – pause/resume hält es am Laufen
             ttsKeepAlive = setInterval(() => {
